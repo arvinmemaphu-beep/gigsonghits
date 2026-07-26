@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gig Song Hits</title>
+<style>
+  :root{
+    --bg: #0F0D0B;
+    --surface: #1C1815;
+    --surface-2: #251F1A;
+    --line: #34291f;
+    --gold: #E8A33D;
+    --gold-dim: #8a662a;
+    --teal: #4FA8A0;
+    --text: #F2EDE4;
+    --muted: #9a8f80;
+    --danger: #c96256;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background:var(--bg); color:var(--text); height:100%; }
+  body{
+    font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 15% -10%, rgba(232,163,61,0.10), transparent 45%),
+      radial-gradient(circle at 90% 10%, rgba(79,168,160,0.08), transparent 40%);
+  }
+  #root{ min-height:100vh; }
+  ::selection{ background: var(--gold); color:#141210; }
+  button{ font-family:inherit; cursor:pointer; }
+  input, textarea{ font-family:inherit; }
+  ::-webkit-scrollbar{ width:10px; height:10px; }
+  ::-webkit-scrollbar-track{ background:var(--surface); }
+  ::-webkit-scrollbar-thumb{ background:var(--line); border-radius:6px; }
+  ::-webkit-scrollbar-thumb:hover{ background:var(--gold-dim); }
+
+  .app{ display:grid; grid-template-columns: 280px 1fr; height:100vh; }
+  @media (max-width: 800px){
+    .app{ grid-template-columns: 1fr; }
+    .sidebar{ display:none; }
+    .sidebar.open{ display:flex; position:fixed; inset:0; z-index:40; height:100vh; width:100vw; }
+  }
+
+  .sidebar{ background: var(--surface); border-right: 1px solid var(--line); display:flex; flex-direction:column; overflow:hidden; }
+  .brand{ padding: 18px 16px 14px 16px; border-bottom: 1px solid var(--line); }
+  .brand-mark{ display:flex; align-items:baseline; gap:6px; }
+  .brand-mark .bolt{ color:var(--gold); font-size:20px; }
+  .brand h1{ margin:0; font-size:20px; letter-spacing:1px; font-weight:700; text-transform:uppercase; }
+  .brand p{ margin:4px 0 0; font-size:11px; color:var(--muted); letter-spacing:1.5px; text-transform:uppercase; }
+  .trademark{ position:fixed; bottom:8px; right:12px; font-size:10px; letter-spacing:2px; color:var(--gold-dim); text-transform:uppercase; z-index:5; pointer-events:none; opacity:0.85; }
+
+  .setlist-head{ display:flex; align-items:center; justify-content:space-between; padding: 14px 16px 8px; }
+  .setlist-head span{ font-size:11px; letter-spacing:2px; color:var(--muted); text-transform:uppercase; }
+  .new-btn{ background: var(--gold); color:#181410; border:none; border-radius:4px; width:24px; height:24px; font-size:16px; font-weight:700; line-height:1; display:flex; align-items:center; justify-content:center; }
+  .new-btn:hover{ background:#f2b559; }
+
+  .song-list{ overflow-y:auto; flex:1; padding: 4px 8px 12px; }
+  .song-item{ padding:10px 10px; border-radius:6px; cursor:pointer; display:flex; flex-direction:column; gap:2px; border:1px solid transparent; margin-bottom:3px; }
+  .song-item:hover{ background: var(--surface-2); }
+  .song-item.active{ background: rgba(232,163,61,0.10); border-color: var(--gold-dim); }
+  .song-item .t{ font-size:14px; font-weight:500; color:var(--text); }
+  .song-item .k{ font-size:11px; color:var(--teal); letter-spacing:1px; }
+  .empty-hint{ padding: 20px 16px; color:var(--muted); font-size:12px; line-height:1.6; }
+
+  .folder-card{ display:flex; align-items:center; gap:10px; padding:12px 10px; border-radius:8px; cursor:pointer; border:1px solid transparent; margin-bottom:5px; }
+  .folder-card:hover{ background: var(--surface-2); border-color: var(--line); }
+  .folder-card .ico{ font-size:18px; }
+  .folder-card .info{ display:flex; flex-direction:column; gap:1px; flex:1; min-width:0; }
+  .folder-card .name{ font-size:14px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .folder-card .count{ font-size:11px; color:var(--muted); letter-spacing:0.5px; }
+  .folder-card.all{ background: rgba(79,168,160,0.08); border-color: rgba(79,168,160,0.25); }
+  .folder-card.all .ico{ color: var(--teal); }
+
+  .folder-header{ display:flex; align-items:center; gap:8px; padding: 12px 12px 8px; }
+  .back-btn{ background:var(--surface-2); border:1px solid var(--line); color:var(--text); width:28px; height:28px; border-radius:6px; font-size:14px; display:flex; align-items:center; justify-content:center; }
+  .back-btn:hover{ border-color:var(--gold-dim); color:var(--gold); }
+  .folder-header .fname{ font-size:14px; font-weight:600; letter-spacing:0.5px; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .folder-header .fcount{ font-size:11px; color:var(--muted); }
+
+  .add-folder-row{ display:flex; gap:6px; padding: 8px 10px 4px; }
+  .add-folder-row input{ flex:1; background:var(--surface-2); border:1px solid var(--line); color:var(--text); border-radius:5px; padding:7px 8px; font-size:12px; }
+  .add-folder-row input:focus{ outline:none; border-color:var(--gold-dim); }
+  .add-folder-row button{ background:var(--gold); color:#181410; border:none; border-radius:5px; padding:0 10px; font-size:11px; font-weight:700; }
+  .add-folder-row .cancel-x{ background:var(--surface-2); color:var(--text); border:1px solid var(--line); }
+
+  .sidebar-foot{ border-top:1px solid var(--line); padding:10px; display:flex; gap:8px; }
+  .foot-btn{ flex:1; background:var(--surface-2); border:1px solid var(--line); color:var(--text); font-size:11px; letter-spacing:1px; text-transform:uppercase; padding:9px 4px; border-radius:5px; }
+  .foot-btn:hover{ border-color: var(--gold-dim); color:var(--gold); }
+
+  .main{ display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+  .toolbar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding: 10px 18px; border-bottom:1px solid var(--line); background:var(--surface); }
+  .mobile-toggle{ display:none; background:none; border:1px solid var(--line); color:var(--text); border-radius:5px; width:34px; height:34px; }
+  @media (max-width:800px){ .mobile-toggle{ display:block; } }
+
+  .tool-group{ display:flex; align-items:center; gap:6px; background:var(--surface-2); border:1px solid var(--line); border-radius:7px; padding:4px; }
+  .tool-btn{ background:transparent; border:none; color:var(--text); width:30px; height:30px; border-radius:5px; font-size:15px; font-weight:600; display:flex; align-items:center; justify-content:center; }
+  .tool-btn:hover{ background: rgba(232,163,61,0.15); color:var(--gold); }
+  .tool-btn.on{ background: var(--gold); color:#181410; }
+  .tool-btn.wide{ width:auto; padding:0 10px; font-size:11px; letter-spacing:1px; }
+  .key-display{ min-width:52px; text-align:center; font-family:'Courier New',monospace; font-weight:700; color:var(--gold); font-size:13px; letter-spacing:1px; }
+
+  .spacer{ flex:1; }
+  .label-sm{ font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); margin-right:2px; }
+  .speed-slider{ width:80px; accent-color: var(--gold); }
+  .fontsize-slider{ width:70px; accent-color: var(--teal); }
+
+  .icon-btn{ background:var(--surface-2); border:1px solid var(--line); color:var(--text); border-radius:6px; padding:7px 12px; font-size:11px; letter-spacing:1px; text-transform:uppercase; display:flex; align-items:center; gap:6px; }
+  .icon-btn:hover{ border-color:var(--gold-dim); color:var(--gold); }
+
+  .stage{ flex:1; overflow-y:auto; padding: 28px 40px 200px; }
+  @media (max-width:800px){ .stage{ padding: 20px 16px 200px; } }
+
+  .song-title-row{ display:flex; align-items:baseline; gap:14px; margin-bottom:4px; flex-wrap:wrap; }
+  .main-title{ font-size:30px; font-weight:700; letter-spacing:0.5px; }
+  input.title-input{ background:none; border:none; color:var(--text); font-family:inherit; font-size:30px; font-weight:700; letter-spacing:0.5px; padding:2px 0; border-bottom:2px solid transparent; max-width: 100%; width:100%; }
+  input.title-input:focus{ outline:none; border-bottom-color: var(--gold-dim); }
+  .song-meta{ display:flex; gap:16px; color:var(--muted); font-size:12px; letter-spacing:1px; text-transform:uppercase; margin-bottom:22px; align-items:center; }
+  .song-meta input{ background:none; border:none; color:var(--muted); font-size:12px; letter-spacing:1px; text-transform:uppercase; width:60px; border-bottom:1px dashed var(--line); }
+  .song-meta input:focus{ outline:none; color:var(--teal); }
+
+  .chart{ font-family:'Courier New', monospace; line-height: 2.15; white-space: pre-wrap; }
+  .chord-line{ color: var(--gold); font-weight:700; letter-spacing:0.5px; }
+  .lyric-line{ color: var(--text); }
+  .chord-tok{ background: rgba(232,163,61,0.14); color:var(--gold); padding:1px 5px; border-radius:4px; display:inline-block; margin-right:2px; font-weight:700; cursor:pointer; transition: background 0.12s, transform 0.12s; }
+  .chord-tok:hover{ background: rgba(232,163,61,0.32); transform: translateY(-1px); }
+  .blank-line{ height: 0.6em; }
+
+  .chord-modal{ background: var(--surface); border:1px solid var(--line); border-radius:12px; padding:20px 24px 18px; width:220px; text-align:center; box-shadow: 0 16px 40px rgba(0,0,0,0.5); }
+  .chord-modal h3{ margin:0 0 2px; font-size:24px; color:var(--gold); letter-spacing:0.5px; }
+  .chord-modal .approx-note{ margin:0 0 10px; font-size:10px; color:var(--muted); letter-spacing:0.5px; text-transform:uppercase; }
+  .chord-modal .diagram-wrap{ display:flex; justify-content:center; margin: 6px 0 14px; }
+  .chord-modal .close-btn{ background:var(--surface-2); border:1px solid var(--line); color:var(--text); padding:8px 20px; border-radius:6px; font-size:12px; letter-spacing:1px; text-transform:uppercase; }
+  .chord-modal .close-btn:hover{ border-color:var(--gold-dim); color:var(--gold); }
+
+  .editor-wrap{ display:flex; flex-direction:column; gap:10px; }
+  .editor{ width:100%; min-height: 420px; background: var(--surface); border:1px solid var(--line); border-radius:8px; color: var(--text); font-family:'Courier New',monospace; font-size:14px; line-height:1.8; padding:16px; resize:vertical; }
+  .editor:focus{ outline:none; border-color: var(--gold-dim); }
+  .editor-hint{ color:var(--muted); font-size:12px; line-height:1.6; }
+  .editor-hint code{ background:var(--surface-2); padding:1px 5px; border-radius:3px; color:var(--teal); }
+
+  .empty-stage{ height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; color:var(--muted); gap:14px; }
+  .empty-stage .big{ font-size:44px; }
+  .empty-stage h2{ margin:0; color:var(--text); font-weight:600; letter-spacing:1px; }
+  .empty-stage p{ margin:0; font-size:13px; max-width:320px; line-height:1.6; }
+
+  .file-input{ display:none; }
+
+  .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background: var(--surface-2); border:1px solid var(--gold-dim); color:var(--text); padding: 10px 18px; border-radius:8px; font-size:13px; letter-spacing:0.5px; z-index:60; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+
+  .confirm-overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center; z-index:70; }
+  .confirm-box{ background: var(--surface); border:1px solid var(--line); border-radius:10px; padding:20px 22px; max-width:320px; text-align:center; }
+  .confirm-box p{ margin:0 0 16px; font-size:14px; color:var(--text); line-height:1.5; }
+  .confirm-row{ display:flex; gap:10px; }
+  .confirm-row button{ flex:1; padding:9px; border-radius:6px; border:1px solid var(--line); background:var(--surface-2); color:var(--text); font-size:12px; letter-spacing:1px; text-transform:uppercase; }
+  .confirm-row .danger-btn{ background:var(--danger); border-color:var(--danger); color:#fff; }
+</style>
+</head>
+<body>
+<div id="root">
+  <div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#9a8f80;">Loading your setlist…</div>
+</div>
+<div class="trademark">MEMAPHU™</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var NOTES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  var FLAT_TO_SHARP = { Db:'C#', Eb:'D#', Gb:'F#', Ab:'G#', Bb:'A#', Cb:'B', Fb:'E' };
+
+  function normalizeRoot(root){ return FLAT_TO_SHARP[root] || root; }
+
+  function transposeChordToken(token, steps){
+    var m = token.match(/^([A-G](?:#|b)?)(.*)$/);
+    if(!m) return token;
+    var root = m[1], rest = m[2];
+    var bass = '';
+    var slashIdx = rest.indexOf('/');
+    if(slashIdx !== -1){ bass = rest.slice(slashIdx); rest = rest.slice(0, slashIdx); }
+    var norm = normalizeRoot(root);
+    var idx = NOTES.indexOf(norm);
+    if(idx === -1) return token;
+    idx = (idx + steps % 12 + 12) % 12;
+    var newRoot = NOTES[idx];
+    var newBass = bass;
+    if(bass){
+      var bm = bass.match(/^\/([A-G](?:#|b)?)(.*)$/);
+      if(bm){
+        var bn = normalizeRoot(bm[1]);
+        var bi = NOTES.indexOf(bn);
+        if(bi !== -1){ bi = (bi + steps % 12 + 12) % 12; newBass = '/' + NOTES[bi] + bm[2]; }
+      }
+    }
+    return newRoot + rest + newBass;
+  }
+
+  var CHORD_TOKEN_RE = /\[([^\]]+)\]/g;
+  var CHORD_WORD_RE = /^[A-G](#|b)?(m|maj|min|dim|aug|sus|add)?[0-9]*(\/[A-G](#|b)?)?$/;
+  var CHORD_WORD_GLOBAL_RE = /([A-G](?:#|b)?(?:m|maj|min|dim|aug|sus|add)?[0-9]*(?:\/[A-G](?:#|b)?)?)/g;
+
+  function isLikelyChordLine(line){
+    var trimmed = line.trim();
+    if(!trimmed) return false;
+    var tokens = trimmed.split(/\s+/);
+    var chordish = 0;
+    for(var i=0;i<tokens.length;i++){ if(CHORD_WORD_RE.test(tokens[i])) chordish++; }
+    return (chordish / tokens.length) >= 0.6;
+  }
+
+  function transposeSongBody(body, steps){
+    if(steps === 0) return body;
+    var lines = body.split('\n');
+    for(var i=0;i<lines.length;i++){
+      var line = lines[i];
+      if(/\[([^\]]+)\]/.test(line)){
+        lines[i] = line.replace(/\[([^\]]+)\]/g, function(m, chord){ return '[' + transposeChordToken(chord, steps) + ']'; });
+      } else if(isLikelyChordLine(line)){
+        lines[i] = line.replace(CHORD_WORD_GLOBAL_RE, function(m){ return transposeChordToken(m, steps); });
+      }
+    }
+    return lines.join('\n');
+  }
+
+  function escapeHtml(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function renderChartHtml(body){
+    var lines = body.split('\n');
+    var html = '';
+    for(var i=0;i<lines.length;i++){
+      var line = lines[i];
+      if(line.trim() === ''){ html += '<div class="blank-line">&nbsp;</div>'; continue; }
+      if(/\[([^\]]+)\]/.test(line)){
+        var replaced = escapeHtml(line).replace(/\[([^\]]+)\]/g, function(m, chord){ return '<span class="chord-tok" data-chord="' + escapeHtml(chord) + '">' + chord + '</span>'; });
+        html += '<div class="lyric-line">' + replaced + '</div>';
+      } else if(isLikelyChordLine(line)){
+        html += '<div class="chord-line">' + escapeHtml(line) + '</div>';
+      } else {
+        html += '<div class="lyric-line">' + escapeHtml(line) + '</div>';
+      }
+    }
+    return html;
+  }
+
+  // ---- Chord diagram engine ----
+  // Hardcoded open-position shapes for natural roots (nicest, most familiar fingerings)
+  var OPEN_SHAPES = {
+    'C':      [-1,3,2,0,1,0],
+    'Cmaj7':  [-1,3,2,0,0,0],
+    'C7':     [-1,3,2,3,1,0],
+    'D':      [-1,-1,0,2,3,2],
+    'Dm':     [-1,-1,0,2,3,1],
+    'D7':     [-1,-1,0,2,1,2],
+    'E':      [0,2,2,1,0,0],
+    'Em':     [0,2,2,0,0,0],
+    'E7':     [0,2,0,1,0,0],
+    'Emaj7':  [0,2,1,1,0,0],
+    'Em7':    [0,2,0,0,0,0],
+    'F':      [1,3,3,2,1,1],
+    'Fmaj7':  [-1,-1,3,2,1,0],
+    'G':      [3,2,0,0,0,3],
+    'G7':     [3,2,0,0,0,1],
+    'A':      [-1,0,2,2,2,0],
+    'Am':     [-1,0,2,2,1,0],
+    'A7':     [-1,0,2,0,2,0],
+    'Am7':    [-1,0,2,0,1,0],
+    'B':      [-1,2,4,4,4,2],
+    'Bm':     [-1,2,4,4,3,2],
+    'B7':     [-1,2,1,2,0,2]
+  };
+  // Movable E-shape barre templates (root note played on low-E string, open = E itself)
+  var BARRE_TEMPLATES = {
+    'maj':  [0,2,2,1,0,0],
+    'm':    [0,2,2,0,0,0],
+    '7':    [0,2,0,1,0,0],
+    'maj7': [0,2,1,1,0,0],
+    'm7':   [0,2,0,0,0,0],
+    'sus4': [0,2,2,2,0,0],
+    'sus2': [0,2,4,1,0,-1]
+  };
+
+  function normalizeQuality(rawSuffix){
+    var s = (rawSuffix || '').toLowerCase();
+    if(s === '') return { key: 'maj', exact: true };
+    if(/^maj7/.test(s)) return { key: 'maj7', exact: true };
+    if(/^(m7|min7|\-7)/.test(s)) return { key: 'm7', exact: true };
+    if(/^sus4/.test(s)) return { key: 'sus4', exact: true };
+    if(/^sus2/.test(s)) return { key: 'sus2', exact: true };
+    if(/^(m|min)(?!aj)/.test(s)) return { key: 'm', exact: true };
+    if(/^7/.test(s)) return { key: '7', exact: true };
+    if(/^dim/.test(s)) return { key: 'm', exact: false };
+    if(/^aug/.test(s)) return { key: 'maj', exact: false };
+    if(/^m/.test(s)) return { key: 'm7', exact: false };
+    return { key: '7', exact: false };
+  }
+
+  function getChordShape(chordToken){
+    var m = chordToken.match(/^([A-G](?:#|b)?)(.*)$/);
+    if(!m) return null;
+    var rawRoot = m[1];
+    var rest = m[2];
+    // strip bass note for shape purposes
+    var slashIdx = rest.indexOf('/');
+    var suffix = slashIdx !== -1 ? rest.slice(0, slashIdx) : rest;
+    var root = normalizeRoot(rawRoot);
+    var q = normalizeQuality(suffix);
+
+    // Try hardcoded open shape first (only for natural-letter roots without # )
+    var naturalKey = rawRoot.length === 1 ? rawRoot : null;
+    if(naturalKey){
+      var tableKey = naturalKey + (q.key === 'maj' ? '' : q.key);
+      if(OPEN_SHAPES[tableKey]){
+        return { frets: OPEN_SHAPES[tableKey], exact: q.exact, label: chordToken };
+      }
+    }
+    // Fallback: algorithmic barre chord (E-shape), shifted by semitone distance from E
+    var template = BARRE_TEMPLATES[q.key] || BARRE_TEMPLATES['maj'];
+    var idxRoot = NOTES.indexOf(root);
+    var idxE = NOTES.indexOf('E');
+    var offset = (idxRoot - idxE + 12) % 12;
+    var frets = template.map(function(f){ return f === -1 ? -1 : f + offset; });
+    return { frets: frets, exact: q.exact, label: chordToken };
+  }
+
+  function chordDiagramSVG(shape){
+    var frets = shape.frets;
+    var positives = frets.filter(function(f){ return f > 0; });
+    var maxFret = positives.length ? Math.max.apply(null, positives) : 0;
+    var startFret = (maxFret <= 4) ? 1 : Math.min.apply(null, positives);
+    var numFretsShown = 4;
+    var w = 160, h = 190;
+    var leftPad = 26, topPad = 34, gridW = 108, gridH = 120;
+    var stringGap = gridW / 5;
+    var fretGap = gridH / numFretsShown;
+
+    var svg = '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" xmlns="http://www.w3.org/2000/svg">';
+
+    // backing card
+    svg += '<rect x="4" y="4" width="' + (w-8) + '" height="' + (h-8) + '" rx="10" fill="#251F1A" stroke="#3a2f24" stroke-width="1"></rect>';
+
+    // faint fretboard wood-tone panel behind the grid
+    svg += '<rect x="' + (leftPad-6) + '" y="' + (topPad-6) + '" width="' + (gridW+12) + '" height="' + (gridH+12) + '" rx="4" fill="#171310"></rect>';
+
+    // string labels (x / o) above nut, only meaningful when showing from fret 1
+    for(var s=0; s<6; s++){
+      var x = leftPad + s * stringGap;
+      var f = frets[s];
+      var mark = '';
+      if(startFret === 1){
+        if(f === -1) mark = 'x';
+        else if(f === 0) mark = 'o';
+      } else if(f === -1){
+        mark = 'x';
+      }
+      if(mark){
+        svg += '<text x="' + x + '" y="' + (topPad - 10) + '" text-anchor="middle" font-size="12" fill="#9a8f80" font-family="Courier New, monospace">' + mark + '</text>';
+      }
+    }
+
+    // position label if not starting at nut
+    if(startFret !== 1){
+      svg += '<text x="' + (leftPad - 18) + '" y="' + (topPad + fretGap/2 + 4) + '" text-anchor="middle" font-size="11" fill="#E8A33D" font-family="Courier New, monospace">' + startFret + 'fr</text>';
+    }
+
+    // nut or top line
+    svg += '<rect x="' + leftPad + '" y="' + topPad + '" width="' + gridW + '" height="' + (startFret === 1 ? 4 : 2) + '" fill="' + (startFret === 1 ? '#F2EDE4' : '#5a5044') + '"></rect>';
+
+    // fret lines
+    for(var fr=0; fr<=numFretsShown; fr++){
+      var y = topPad + fr * fretGap;
+      svg += '<line x1="' + leftPad + '" y1="' + y + '" x2="' + (leftPad+gridW) + '" y2="' + y + '" stroke="#4a4034" stroke-width="1"></line>';
+    }
+    // string lines
+    for(var st=0; st<6; st++){
+      var sx = leftPad + st * stringGap;
+      svg += '<line x1="' + sx + '" y1="' + topPad + '" x2="' + sx + '" y2="' + (topPad+gridH) + '" stroke="#4a4034" stroke-width="1"></line>';
+    }
+
+    // detect barre: same fret value repeated across 3+ adjacent strings (excluding -1)
+    var barreFretVal = null, barreStart = -1, barreEnd = -1;
+    for(var b=0;b<6;b++){
+      if(frets[b] > 0){
+        var runEnd = b;
+        while(runEnd+1 < 6 && frets[runEnd+1] === frets[b]) runEnd++;
+        if(runEnd - b >= 3){ barreFretVal = frets[b]; barreStart = b; barreEnd = runEnd; break; }
+      }
+    }
+    if(barreFretVal !== null){
+      var relFret = barreFretVal - startFret + 1;
+      var by = topPad + (relFret - 0.5) * fretGap;
+      var bx1 = leftPad + barreStart * stringGap;
+      var bx2 = leftPad + barreEnd * stringGap;
+      svg += '<line x1="' + bx1 + '" y1="' + by + '" x2="' + bx2 + '" y2="' + by + '" stroke="#E8A33D" stroke-width="10" stroke-linecap="round" opacity="0.85"></line>';
+    }
+
+    // dots for fretted notes
+    for(var d=0; d<6; d++){
+      var fv = frets[d];
+      if(fv > 0){
+        var isPartOfBarre = barreFretVal !== null && fv === barreFretVal && d >= barreStart && d <= barreEnd;
+        if(isPartOfBarre) continue;
+        var dx = leftPad + d * stringGap;
+        var relF = fv - startFret + 1;
+        var dy = topPad + (relF - 0.5) * fretGap;
+        svg += '<circle cx="' + dx + '" cy="' + dy + '" r="9" fill="#181410" opacity="0.6"></circle>';
+        svg += '<circle cx="' + dx + '" cy="' + dy + '" r="8" fill="#E8A33D"></circle>';
+        svg += '<circle cx="' + (dx-2.5) + '" cy="' + (dy-2.5) + '" r="2" fill="#f7d9a3" opacity="0.7"></circle>';
+      }
+    }
+
+    svg += '</svg>';
+    return svg;
+  }
+
+  function uid(){ return 's_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
+
+  var SAMPLE_BODY = "[G]Sana'y di na lang totoong nagbago ka\n[Em]Baliktad man ang mundo't magunaw\n[C]Wag ka lang sana [D]lumayo, tumigil sa piling ko\n\nIka'y aking iidolo\n[G]Kahit ilang beses [Em]mong sasabihing\n[C]hindi mo na kayang [D]tumigil, magpaiwan";
+
+  // ---- App state ----
+  var state = {
+    songs: null,
+    folderList: ['Gig', 'Choir'],
+    sidebarView: 'folders', // 'folders' | 'folderSongs'
+    currentFolder: null,
+    addingFolder: false,
+    activeId: null,
+    mode: 'view',
+    transposeSteps: 0,
+    autoScroll: false,
+    scrollSpeed: 3,
+    fontSize: 16,
+    sidebarOpen: false,
+    confirmDelete: null,
+    chordModal: null
+  };
+
+  var toastTimer = null;
+  var scrollAnimId = null;
+
+  function getActiveSong(){
+    if(!state.songs) return null;
+    for(var i=0;i<state.songs.length;i++){ if(state.songs[i].id === state.activeId) return state.songs[i]; }
+    return null;
+  }
+
+  async function safeStorageGet(key){
+    try{
+      if(!window.storage) return null;
+      var r = await window.storage.get(key);
+      return r;
+    }catch(e){ return null; }
+  }
+  async function safeStorageSet(key, value){
+    try{
+      if(!window.storage) return null;
+      return await window.storage.set(key, value);
+    }catch(e){ return null; }
+  }
+  async function safeStorageDelete(key){
+    try{
+      if(!window.storage) return null;
+      return await window.storage.delete(key);
+    }catch(e){ return null; }
+  }
+
+  async function persistIndex(list){
+    await safeStorageSet('song-index', JSON.stringify(list.map(function(s){ return s.id; })));
+  }
+  async function persistSong(song){
+    await safeStorageSet('song:' + song.id, JSON.stringify(song));
+  }
+  async function persistFolderList(){
+    await safeStorageSet('folder-list', JSON.stringify(state.folderList));
+  }
+
+  // Union of the persisted folder list and any folder names in use by songs,
+  // so a folder never "disappears" even if it wasn't explicitly created first.
+  function getFolders(){
+    var names = state.folderList.slice();
+    state.songs.forEach(function(s){
+      var f = s.folder || 'Gig';
+      if(names.indexOf(f) === -1) names.push(f);
+    });
+    return names;
+  }
+
+  async function ensureFolder(name){
+    var trimmed = (name || '').trim();
+    if(!trimmed) return;
+    if(state.folderList.indexOf(trimmed) === -1){
+      state.folderList.push(trimmed);
+      await persistFolderList();
+    }
+  }
+
+  async function loadSongs(){
+    var flRes = await safeStorageGet('folder-list');
+    try{
+      var fl = flRes && flRes.value ? JSON.parse(flRes.value) : null;
+      if(fl && fl.length) state.folderList = fl;
+      else await persistFolderList(); // seed defaults on first run
+    }catch(e){ await persistFolderList(); }
+
+    var idxRes = await safeStorageGet('song-index');
+    var ids = [];
+    try{ ids = idxRes && idxRes.value ? JSON.parse(idxRes.value) : []; }catch(e){ ids = []; }
+
+    if(!ids || ids.length === 0){
+      var id = uid();
+      var song = { id: id, title: "Halik", key: "G", bpm: "", folder: "Gig", body: SAMPLE_BODY };
+      await persistSong(song);
+      await persistIndex([song]);
+      state.songs = [song];
+      state.activeId = id;
+      render();
+      return;
+    }
+
+    var loaded = [];
+    for(var i=0;i<ids.length;i++){
+      var r = await safeStorageGet('song:' + ids[i]);
+      if(r && r.value){
+        try{
+          var parsed = JSON.parse(r.value);
+          if(!parsed.folder) parsed.folder = 'Gig'; // migrate older songs saved before folders existed
+          loaded.push(parsed);
+        }catch(e){}
+      }
+    }
+    if(loaded.length === 0){
+      var id2 = uid();
+      var song2 = { id: id2, title: "Halik", key: "G", bpm: "", folder: "Gig", body: SAMPLE_BODY };
+      loaded = [song2];
+      await persistSong(song2);
+      await persistIndex(loaded);
+    }
+    state.songs = loaded;
+    state.activeId = loaded[0].id;
+    render();
+  }
+
+  function showToast(msg){
+    var el = document.getElementById('toast');
+    if(!el) return;
+    el.textContent = msg;
+    el.style.display = 'block';
+    if(toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ el.style.display = 'none'; }, 2200);
+  }
+
+  async function updateActiveSong(patch){
+    var song = getActiveSong();
+    if(!song) return;
+    Object.assign(song, patch);
+    await persistSong(song);
+  }
+
+  async function createSong(){
+    var wasAllSongs = state.currentFolder === null && state.sidebarView === 'folderSongs';
+    var targetFolder = state.currentFolder || 'Gig';
+    var song = { id: uid(), title: "Untitled Song", key: "C", bpm: "", folder: targetFolder, body: "[C]Type your lyrics and [G]chords here\nUse brackets like [Am] before the [F]syllable" };
+    state.songs.unshift(song);
+    state.activeId = song.id;
+    state.mode = 'edit';
+    state.transposeSteps = 0;
+    state.sidebarView = 'folderSongs';
+    if(!wasAllSongs) state.currentFolder = targetFolder;
+    await ensureFolder(targetFolder);
+    await persistSong(song);
+    await persistIndex(state.songs);
+    render();
+    focusTitleInput();
+  }
+
+  async function deleteSong(id){
+    state.songs = state.songs.filter(function(s){ return s.id !== id; });
+    await safeStorageDelete('song:' + id);
+    await persistIndex(state.songs);
+    if(state.activeId === id){
+      state.activeId = state.songs.length ? state.songs[0].id : null;
+      state.transposeSteps = 0;
+    }
+    state.confirmDelete = null;
+    render();
+    showToast('Song removed');
+  }
+
+  function selectSong(id){
+    state.activeId = id;
+    state.mode = 'view';
+    state.transposeSteps = 0;
+    state.sidebarOpen = false;
+    render();
+  }
+
+  function openFolder(name){
+    state.currentFolder = name === '__all__' ? null : name;
+    state.sidebarView = 'folderSongs';
+    render();
+  }
+
+  function backToFolders(){
+    state.sidebarView = 'folders';
+    state.addingFolder = false;
+    render();
+  }
+
+  async function confirmAddFolder(){
+    var input = document.getElementById('new-folder-input');
+    if(!input) return;
+    var name = input.value.trim();
+    if(!name){ state.addingFolder = false; render(); return; }
+    await ensureFolder(name);
+    state.addingFolder = false;
+    render();
+    showToast('Folder "' + name + '" added');
+  }
+
+  function handleImportFile(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = async function(ev){
+      var text = ev.target.result;
+      var title = file.name.replace(/\.(txt|cho|chopro|crd)$/i, '');
+      var targetFolder = state.currentFolder || 'Gig';
+      var song = { id: uid(), title: title, key: "C", bpm: "", folder: targetFolder, body: text.replace(/\s+$/,'') };
+      state.songs.unshift(song);
+      state.activeId = song.id;
+      state.mode = 'view';
+      state.transposeSteps = 0;
+      state.sidebarView = 'folderSongs';
+      state.currentFolder = targetFolder;
+      await ensureFolder(targetFolder);
+      await persistSong(song);
+      await persistIndex(state.songs);
+      render();
+      showToast('Imported "' + title + '"');
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }
+
+  function handleExport(){
+    var song = getActiveSong();
+    if(!song) return;
+    var body = transposeSongBody(song.body, state.transposeSteps);
+    var keyDisp = song.key ? transposeChordToken(song.key, state.transposeSteps) : '';
+    var header = song.title + (keyDisp ? ' - Key of ' + keyDisp : '') + '\n\n';
+    var blob = new Blob([header + body], { type: 'text/plain' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = (song.title || 'song').replace(/[^a-z0-9\-_ ]/gi,'').trim() + '.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Exported as .txt');
+  }
+
+  function stopAutoScroll(){
+    if(scrollAnimId) cancelAnimationFrame(scrollAnimId);
+    scrollAnimId = null;
+  }
+
+  function startAutoScroll(){
+    stopAutoScroll();
+    var el = document.getElementById('stage');
+    if(!el) return;
+    var lastTs = null;
+    // Float accumulator: el.scrollTop truncates to an integer on every read/write,
+    // so at low speeds the fractional per-frame movement was getting lost and the
+    // page never actually moved. Track position separately as a float instead.
+    var pos = el.scrollTop;
+    function step(ts){
+      if(!state.autoScroll){ return; }
+      if(lastTs == null){ lastTs = ts; scrollAnimId = requestAnimationFrame(step); return; }
+      var dt = (ts - lastTs) / 1000;
+      lastTs = ts;
+      var pxPerSec = 4 + state.scrollSpeed * 4; // gentler range: ~8px/s to ~44px/s
+      pos += pxPerSec * dt;
+      el.scrollTop = pos;
+      if(el.scrollTop + el.clientHeight >= el.scrollHeight - 2){
+        state.autoScroll = false;
+        renderToolbarOnly();
+        return;
+      }
+      scrollAnimId = requestAnimationFrame(step);
+    }
+    scrollAnimId = requestAnimationFrame(step);
+  }
+
+  function toggleAutoScroll(){
+    state.autoScroll = !state.autoScroll;
+    if(state.autoScroll) startAutoScroll(); else stopAutoScroll();
+    renderToolbarOnly();
+  }
+
+  function focusTitleInput(){
+    setTimeout(function(){
+      var el = document.querySelector('.title-input');
+      if(el){ el.focus(); el.select(); }
+    }, 30);
+  }
+
+  // ---- Rendering ----
+  function render(){
+    var root = document.getElementById('root');
+    if(state.songs === null){
+      root.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#9a8f80;">Loading your setlist…</div>';
+      return;
+    }
+    var song = getActiveSong();
+    var displayedKey = song ? transposeChordToken(song.key || 'C', state.transposeSteps) : '';
+
+    var html = '';
+    html += '<div class="app">';
+
+    // Sidebar
+    html += '<div class="sidebar' + (state.sidebarOpen ? ' open' : '') + '">';
+    html += '  <div class="brand"><div class="brand-mark"><span class="bolt">\u266A</span><h1>Gig Song Hits</h1></div><p>Your on-stage songbook</p></div>';
+
+    if(state.sidebarView === 'folders'){
+      var folders = getFolders();
+      html += '  <div class="setlist-head"><span>Folders (' + folders.length + ')</span><button class="new-btn" id="btn-add-folder-toggle" title="New folder">+</button></div>';
+      if(state.addingFolder){
+        html += '  <div class="add-folder-row"><input id="new-folder-input" placeholder="Folder name (e.g. Praise Night)" maxlength="40" /><button id="btn-add-folder-confirm">Add</button><button class="cancel-x" id="btn-add-folder-cancel">\u2715</button></div>';
+      }
+      html += '  <div class="song-list">';
+      var totalCount = state.songs.length;
+      html += '    <div class="folder-card all" data-folder="__all__"><span class="ico">\uD83C\uDFB5</span><div class="info"><span class="name">All Songs</span><span class="count">' + totalCount + ' song' + (totalCount===1?'':'s') + '</span></div></div>';
+      folders.forEach(function(f){
+        var count = state.songs.filter(function(s){ return (s.folder || 'Gig') === f; }).length;
+        html += '    <div class="folder-card" data-folder="' + escapeHtml(f) + '"><span class="ico">\uD83D\uDCC1</span><div class="info"><span class="name">' + escapeHtml(f) + '</span><span class="count">' + count + ' song' + (count===1?'':'s') + '</span></div></div>';
+      });
+      html += '  </div>';
+      html += '  <div class="sidebar-foot"><button class="foot-btn" id="btn-import-side">Import</button>' + (state.sidebarOpen ? '<button class="foot-btn" id="btn-close-side">Close</button>' : '') + '</div>';
+    } else {
+      var folderSongs = state.currentFolder ? state.songs.filter(function(s){ return (s.folder || 'Gig') === state.currentFolder; }) : state.songs;
+      html += '  <div class="folder-header"><button class="back-btn" id="btn-back-folders">\u2190</button><span class="fname">' + escapeHtml(state.currentFolder || 'All Songs') + '</span><span class="fcount">' + folderSongs.length + '</span><button class="new-btn" id="btn-new" title="New song">+</button></div>';
+      html += '  <div class="song-list">';
+      if(folderSongs.length === 0){
+        html += '<div class="empty-hint">Wala pang kanta dito. Pindutin ang + para gumawa, o mag-import ng file sa ibaba.</div>';
+      } else {
+        for(var i=0;i<folderSongs.length;i++){
+          var s = folderSongs[i];
+          html += '<div class="song-item' + (s.id === state.activeId ? ' active' : '') + '" data-id="' + s.id + '">';
+          html += '  <span class="t">' + escapeHtml(s.title || 'Untitled') + '</span>';
+          html += '  <span class="k">Key ' + escapeHtml(s.key || '\u2014') + (s.bpm ? ' \u00b7 ' + escapeHtml(s.bpm) + ' bpm' : '') + '</span>';
+          html += '</div>';
+        }
+      }
+      html += '  </div>';
+      html += '  <div class="sidebar-foot"><button class="foot-btn" id="btn-import-side">Import</button>' + (state.sidebarOpen ? '<button class="foot-btn" id="btn-close-side">Close</button>' : '') + '</div>';
+    }
+    html += '  <input id="file-input" type="file" accept=".txt,.cho,.chopro,.crd,text/plain" class="file-input" />';
+    html += '</div>';
+
+    // Main
+    html += '<div class="main">';
+    html += '  <div class="toolbar">';
+    html += '    <button class="mobile-toggle" id="btn-toggle-sidebar">\u2630</button>';
+    if(song){
+      html += '<div class="tool-group"><span class="label-sm">Key</span>';
+      html += '<button class="tool-btn" id="btn-key-down">\u2212</button>';
+      html += '<span class="key-display">' + displayedKey + '</span>';
+      html += '<button class="tool-btn" id="btn-key-up">+</button>';
+      if(state.transposeSteps !== 0) html += '<button class="tool-btn" id="btn-key-reset" style="font-size:11px;">0</button>';
+      html += '</div>';
+
+      html += '<div class="tool-group"><button class="tool-btn wide' + (state.autoScroll ? ' on' : '') + '" id="btn-autoscroll">' + (state.autoScroll ? '\u23F8 SCROLLING' : '\u25B6 SCROLL') + '</button>';
+      html += '<span class="label-sm" style="margin-left:6px;">Speed</span>';
+      html += '<input class="speed-slider" type="range" min="1" max="10" value="' + state.scrollSpeed + '" id="range-speed" /></div>';
+
+      html += '<div class="tool-group"><span class="label-sm">Aa</span><input class="fontsize-slider" type="range" min="12" max="28" value="' + state.fontSize + '" id="range-font" /></div>';
+
+      html += '<div class="tool-group"><button class="tool-btn wide' + (state.mode === 'edit' ? ' on' : '') + '" id="btn-toggle-mode">' + (state.mode === 'edit' ? 'DONE' : 'EDIT') + '</button></div>';
+
+      html += '<div class="spacer"></div>';
+      html += '<button class="icon-btn" id="btn-import-top">Import</button>';
+      html += '<button class="icon-btn" id="btn-export">Export</button>';
+      html += '<button class="icon-btn" id="btn-delete" style="color:var(--danger);">Delete</button>';
+    }
+    html += '  </div>';
+
+    html += '  <div class="stage" id="stage">';
+    if(!song){
+      html += '<div class="empty-stage"><div class="big">\uD83C\uDFA4</div><h2>Wala pang napiling kanta</h2><p>Gumawa ng bago o mag-import ng chord sheet para makapagsimula sa gig mo.</p><button class="icon-btn" id="btn-new-empty">+ New Song</button></div>';
+    } else if(state.mode === 'view'){
+      html += '<div class="song-title-row"><span class="main-title">' + escapeHtml(song.title || 'Untitled') + '</span></div>';
+      html += '<div class="song-meta"><span>Key: ' + displayedKey + '</span>';
+      html += '<span>\uD83D\uDCC1 ' + escapeHtml(song.folder || 'Gig') + '</span>';
+      if(song.bpm) html += '<span>' + escapeHtml(song.bpm) + ' BPM</span>';
+      if(state.transposeSteps !== 0) html += '<span style="color:var(--teal);">Transposed ' + (state.transposeSteps > 0 ? '+' : '') + state.transposeSteps + '</span>';
+      html += '</div>';
+      html += '<div class="chart" style="font-size:' + state.fontSize + 'px;">' + renderChartHtml(transposeSongBody(song.body, state.transposeSteps)) + '</div>';
+    } else {
+      html += '<div class="editor-wrap">';
+      html += '<div class="song-title-row"><input class="title-input" id="edit-title" value="' + escapeHtml(song.title) + '" placeholder="Song title" /></div>';
+      html += '<div class="song-meta"><span>Key: <input id="edit-key" value="' + escapeHtml(song.key || '') + '" style="width:40px;" /></span><span>BPM: <input id="edit-bpm" value="' + escapeHtml(song.bpm || '') + '" style="width:50px;" /></span><span>Folder: <input id="edit-folder" list="folder-options" value="' + escapeHtml(song.folder || 'Gig') + '" style="width:90px;" /><datalist id="folder-options">' + getFolders().map(function(f){ return '<option value="' + escapeHtml(f) + '"></option>'; }).join('') + '</datalist></span></div>';
+      html += '<p class="editor-hint">Ilagay ang chords sa loob ng brackets bago ang syllable, hal. <code>[G]Sana\'y di na lang</code>. Pwede ring gumawa ng hiwalay na linya ng chords sa itaas ng lyrics.</p>';
+      html += '<textarea class="editor" id="edit-body" spellcheck="false">' + escapeHtml(song.body) + '</textarea>';
+      html += '</div>';
+    }
+    html += '  </div>';
+    html += '</div>'; // main
+    html += '</div>'; // app
+
+    html += '<div class="toast" id="toast" style="display:none;"></div>';
+
+    if(state.confirmDelete){
+      html += '<div class="confirm-overlay" id="confirm-overlay"><div class="confirm-box">';
+      html += '<p>Alisin ang kantang ito sa setlist? Hindi na maibabalik.</p>';
+      html += '<div class="confirm-row"><button id="btn-cancel-delete">Cancel</button><button class="danger-btn" id="btn-confirm-delete">Delete</button></div>';
+      html += '</div></div>';
+    }
+
+    if(state.chordModal){
+      var shape = getChordShape(state.chordModal);
+      html += '<div class="confirm-overlay" id="chord-overlay"><div class="chord-modal">';
+      if(shape){
+        html += '<h3>' + escapeHtml(state.chordModal) + '</h3>';
+        if(!shape.exact) html += '<p class="approx-note">Closest na guide shape lang</p>';
+        html += '<div class="diagram-wrap">' + chordDiagramSVG(shape) + '</div>';
+      } else {
+        html += '<h3>' + escapeHtml(state.chordModal) + '</h3><p class="approx-note">Walang diagram na nakita</p>';
+      }
+      html += '<button class="close-btn" id="btn-close-chord">Close</button>';
+      html += '</div></div>';
+    }
+
+    root.innerHTML = html;
+    attachHandlers();
+  }
+
+  // Lightweight re-render for toolbar-only changes (autoscroll toggle) to avoid disrupting scroll position
+  function renderToolbarOnly(){
+    var btn = document.getElementById('btn-autoscroll');
+    if(btn){
+      btn.className = 'tool-btn wide' + (state.autoScroll ? ' on' : '');
+      btn.textContent = state.autoScroll ? '\u23F8 SCROLLING' : '\u25B6 SCROLL';
+    }
+  }
+
+  function attachHandlers(){
+    var byId = function(id){ return document.getElementById(id); };
+
+    if(byId('btn-new')) byId('btn-new').onclick = createSong;
+    if(byId('btn-new-empty')) byId('btn-new-empty').onclick = createSong;
+    if(byId('btn-toggle-sidebar')) byId('btn-toggle-sidebar').onclick = function(){ state.sidebarOpen = !state.sidebarOpen; render(); };
+    if(byId('btn-close-side')) byId('btn-close-side').onclick = function(){ state.sidebarOpen = false; render(); };
+
+    var folderCards = document.querySelectorAll('.folder-card');
+    folderCards.forEach(function(el){
+      el.onclick = function(){ openFolder(el.getAttribute('data-folder')); };
+    });
+    if(byId('btn-back-folders')) byId('btn-back-folders').onclick = backToFolders;
+    if(byId('btn-add-folder-toggle')) byId('btn-add-folder-toggle').onclick = function(){
+      state.addingFolder = !state.addingFolder;
+      render();
+      if(state.addingFolder){ var inp = byId('new-folder-input'); if(inp) inp.focus(); }
+    };
+    if(byId('btn-add-folder-confirm')) byId('btn-add-folder-confirm').onclick = confirmAddFolder;
+    if(byId('btn-add-folder-cancel')) byId('btn-add-folder-cancel').onclick = function(){ state.addingFolder = false; render(); };
+    var newFolderInput = byId('new-folder-input');
+    if(newFolderInput) newFolderInput.onkeydown = function(e){ if(e.key === 'Enter') confirmAddFolder(); if(e.key === 'Escape'){ state.addingFolder = false; render(); } };
+
+    var items = document.querySelectorAll('.song-item');
+    items.forEach(function(el){
+      el.onclick = function(){ selectSong(el.getAttribute('data-id')); };
+    });
+
+    var fileInput = byId('file-input');
+    if(fileInput) fileInput.onchange = handleImportFile;
+    if(byId('btn-import-side')) byId('btn-import-side').onclick = function(){ fileInput.click(); };
+    if(byId('btn-import-top')) byId('btn-import-top').onclick = function(){ fileInput.click(); };
+
+    if(byId('btn-key-down')) byId('btn-key-down').onclick = function(){ state.transposeSteps -= 1; render(); };
+    if(byId('btn-key-up')) byId('btn-key-up').onclick = function(){ state.transposeSteps += 1; render(); };
+    if(byId('btn-key-reset')) byId('btn-key-reset').onclick = function(){ state.transposeSteps = 0; render(); };
+
+    if(byId('btn-autoscroll')) byId('btn-autoscroll').onclick = toggleAutoScroll;
+    if(byId('range-speed')) byId('range-speed').oninput = function(e){ state.scrollSpeed = Number(e.target.value); };
+    if(byId('range-font')) byId('range-font').oninput = function(e){
+      state.fontSize = Number(e.target.value);
+      var chart = document.querySelector('.chart');
+      if(chart) chart.style.fontSize = state.fontSize + 'px';
+    };
+
+    if(byId('btn-toggle-mode')) byId('btn-toggle-mode').onclick = function(){
+      state.mode = state.mode === 'edit' ? 'view' : 'edit';
+      render();
+      if(state.mode === 'edit') focusTitleInput();
+    };
+
+    if(byId('btn-export')) byId('btn-export').onclick = handleExport;
+    if(byId('btn-delete')) byId('btn-delete').onclick = function(){ state.confirmDelete = state.activeId; render(); };
+    if(byId('btn-cancel-delete')) byId('btn-cancel-delete').onclick = function(){ state.confirmDelete = null; render(); };
+    if(byId('btn-confirm-delete')) byId('btn-confirm-delete').onclick = function(){ deleteSong(state.confirmDelete); };
+    if(byId('confirm-overlay')) byId('confirm-overlay').onclick = function(e){ if(e.target.id === 'confirm-overlay'){ state.confirmDelete = null; render(); } };
+
+    if(byId('btn-close-chord')) byId('btn-close-chord').onclick = function(){ state.chordModal = null; render(); };
+    if(byId('chord-overlay')) byId('chord-overlay').onclick = function(e){ if(e.target.id === 'chord-overlay'){ state.chordModal = null; render(); } };
+
+    var editTitle = byId('edit-title');
+    if(editTitle){
+      editTitle.oninput = function(e){ updateActiveSong({ title: e.target.value }); refreshSidebarLabelsSoft(); };
+    }
+    var editKey = byId('edit-key');
+    if(editKey) editKey.oninput = function(e){ updateActiveSong({ key: e.target.value }); refreshSidebarLabelsSoft(); };
+    var editBpm = byId('edit-bpm');
+    if(editBpm) editBpm.oninput = function(e){ updateActiveSong({ bpm: e.target.value }); refreshSidebarLabelsSoft(); };
+    var editFolder = byId('edit-folder');
+    if(editFolder) editFolder.onchange = async function(e){
+      var val = e.target.value.trim() || 'Gig';
+      await updateActiveSong({ folder: val });
+      await ensureFolder(val);
+      state.currentFolder = val;
+      render();
+    };
+    var editBody = byId('edit-body');
+    if(editBody) editBody.oninput = function(e){ updateActiveSong({ body: e.target.value }); };
+
+    if(state.autoScroll) startAutoScroll();
+  }
+
+  function refreshSidebarLabelsSoft(){
+    var song = getActiveSong();
+    if(!song) return;
+    var el = document.querySelector('.song-item[data-id="' + song.id + '"]');
+    if(el){
+      var t = el.querySelector('.t');
+      var k = el.querySelector('.k');
+      if(t) t.textContent = song.title || 'Untitled';
+      if(k) k.textContent = 'Key ' + (song.key || '\u2014') + (song.bpm ? ' \u00b7 ' + song.bpm + ' bpm' : '');
+    }
+  }
+
+  document.addEventListener('click', function(e){
+    var el = e.target;
+    if(el && el.classList && el.classList.contains('chord-tok')){
+      state.chordModal = el.getAttribute('data-chord');
+      render();
+    }
+  });
+
+  loadSongs();
+})();
+</script>
+</body>
+</html>
