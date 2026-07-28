@@ -177,7 +177,7 @@
 <div id="root">
   <div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#9a8f80;">Loading your setlist…</div>
 </div>
-<div class="trademark">MEMAPHU™</div>
+<div class="trademark">MEMAPHU™ · v9</div>
 
 <script>
 (function(){
@@ -464,6 +464,7 @@
     scrollSpeed: 3,
     countInSeconds: 4,
     countdownRemaining: null,
+    scrollStarted: false,
     fontSize: 19,
     sidebarOpen: false,
     confirmDelete: null,
@@ -650,6 +651,10 @@
     state.mode = 'view';
     state.transposeSteps = 0;
     state.sidebarOpen = false;
+    state.autoScroll = false;
+    state.scrollStarted = false;
+    stopAutoScroll();
+    stopCountdown();
     render();
   }
 
@@ -812,6 +817,7 @@
       el.scrollTop = pos;
       if(el.scrollTop + el.clientHeight >= el.scrollHeight - 2){
         state.autoScroll = false;
+        state.scrollStarted = false;
         renderToolbarOnly();
         return;
       }
@@ -822,6 +828,7 @@
 
   function toggleAutoScroll(){
     if(state.autoScroll){
+      // Pausing keeps scrollStarted=true, so pressing play again just resumes.
       state.autoScroll = false;
       stopAutoScroll();
       renderToolbarOnly();
@@ -833,6 +840,13 @@
       render();
       return;
     }
+    if(state.scrollStarted){
+      // Resuming after a pause — no need to count in again.
+      state.autoScroll = true;
+      startAutoScroll();
+      renderToolbarOnly();
+      return;
+    }
     startCountdown();
   }
 
@@ -840,6 +854,7 @@
     stopCountdown();
     if(!state.countInSeconds || state.countInSeconds <= 0){
       state.autoScroll = true;
+      state.scrollStarted = true;
       startAutoScroll();
       renderToolbarOnly();
       return;
@@ -853,6 +868,7 @@
         countdownTimerId = null;
         state.countdownRemaining = null;
         state.autoScroll = true;
+        state.scrollStarted = true;
         render();
         startAutoScroll();
       } else {
