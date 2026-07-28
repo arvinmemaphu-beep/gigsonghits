@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Gig Song Hits</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0F0D0B">
@@ -12,6 +12,9 @@
 <meta name="apple-mobile-web-app-title" content="Gig Hits">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg: #0F0D0B;
@@ -116,7 +119,7 @@
   .icon-btn{ background:var(--surface-2); border:1px solid var(--line); color:var(--text); border-radius:6px; padding:7px 12px; font-size:11px; letter-spacing:1px; text-transform:uppercase; display:flex; align-items:center; gap:6px; }
   .icon-btn:hover{ border-color:var(--gold-dim); color:var(--gold); }
 
-  .stage{ flex:1; overflow-y:auto; overflow-x:hidden; padding: 28px 40px 200px; }
+  .stage{ flex:1; overflow-y:auto; overflow-x:hidden; padding: 28px 40px 200px; touch-action: pan-y; }
   @media (max-width:800px){ .stage{ padding: 20px 16px 200px; } }
 
   .song-title-row{ display:flex; align-items:baseline; gap:14px; margin-bottom:4px; flex-wrap:wrap; }
@@ -127,7 +130,7 @@
   .song-meta input{ background:none; border:none; color:var(--muted); font-size:12px; letter-spacing:1px; text-transform:uppercase; width:60px; border-bottom:1px dashed var(--line); }
   .song-meta input:focus{ outline:none; color:var(--teal); }
 
-  .chart{ font-family:'Courier New', monospace; line-height: 2.15; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; }
+  .chart{ font-family: 'Roboto Mono', 'DejaVu Sans Mono', 'Consolas', 'Menlo', monospace; line-height: 2.15; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; }
   .chord-line{ color: var(--gold); font-weight:700; letter-spacing:0.5px; }
   .lyric-line{ color: var(--text); }
   .chord-tok{ background: rgba(232,163,61,0.14); color:var(--gold); padding:1px 5px; border-radius:4px; display:inline-block; margin-right:2px; font-weight:700; cursor:pointer; transition: background 0.12s, transform 0.12s; }
@@ -766,18 +769,16 @@
     var el = document.getElementById('stage');
     if(!el) return;
     var lastTs = null;
-    // Float accumulator: el.scrollTop truncates to an integer on every read/write,
-    // so at low speeds the fractional per-frame movement was getting lost and the
-    // page never actually moved. Track position separately as a float instead.
-    var pos = el.scrollTop;
     function step(ts){
       if(!state.autoScroll){ return; }
       if(lastTs == null){ lastTs = ts; scrollAnimId = requestAnimationFrame(step); return; }
       var dt = (ts - lastTs) / 1000;
       lastTs = ts;
       var pxPerSec = 4 + state.scrollSpeed * 4; // gentler range: ~8px/s to ~44px/s
-      pos += pxPerSec * dt;
-      el.scrollTop = pos;
+      // Read the current scroll position fresh each frame (instead of a detached
+      // accumulator) so manual up/down scrolling by the user is respected and
+      // autoscroll continues smoothly from wherever they leave it.
+      el.scrollTop = el.scrollTop + pxPerSec * dt;
       if(el.scrollTop + el.clientHeight >= el.scrollHeight - 2){
         state.autoScroll = false;
         renderToolbarOnly();
@@ -992,6 +993,44 @@
       var chart = document.querySelector('.chart');
       if(chart) chart.style.fontSize = state.fontSize + 'px';
     };
+
+    // Two-finger pinch on the lyrics area resizes the font (replaces native browser pinch-zoom,
+    // which is disabled via the viewport meta tag so it doesn't fight this).
+    var stageEl = byId('stage');
+    if(stageEl){
+      var pinchStartDist = null;
+      var pinchStartFont = null;
+      function touchDist(touches){
+        var dx = touches[0].clientX - touches[1].clientX;
+        var dy = touches[0].clientY - touches[1].clientY;
+        return Math.sqrt(dx*dx + dy*dy);
+      }
+      stageEl.addEventListener('touchstart', function(e){
+        if(e.touches.length === 2){
+          pinchStartDist = touchDist(e.touches);
+          pinchStartFont = state.fontSize;
+        }
+      }, { passive: true });
+      stageEl.addEventListener('touchmove', function(e){
+        if(e.touches.length === 2 && pinchStartDist){
+          e.preventDefault();
+          var newDist = touchDist(e.touches);
+          var ratio = newDist / pinchStartDist;
+          var newSize = Math.round(pinchStartFont * ratio);
+          newSize = Math.max(12, Math.min(36, newSize));
+          if(newSize !== state.fontSize){
+            state.fontSize = newSize;
+            var chart = document.querySelector('.chart');
+            if(chart) chart.style.fontSize = state.fontSize + 'px';
+            var slider = byId('range-font');
+            if(slider) slider.value = state.fontSize;
+          }
+        }
+      }, { passive: false });
+      stageEl.addEventListener('touchend', function(e){
+        if(e.touches.length < 2){ pinchStartDist = null; pinchStartFont = null; }
+      }, { passive: true });
+    }
 
     if(byId('btn-toggle-mode')) byId('btn-toggle-mode').onclick = function(){
       state.mode = state.mode === 'edit' ? 'view' : 'edit';
