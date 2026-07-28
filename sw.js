@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gig-song-hits-v7';
+const CACHE_NAME = 'gig-song-hits-v8';
 const ASSETS = [
   './',
   './index.html',
