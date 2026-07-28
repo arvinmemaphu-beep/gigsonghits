@@ -160,9 +160,8 @@
   .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background: var(--surface-2); border:1px solid var(--gold-dim); color:var(--text); padding: 10px 18px; border-radius:8px; font-size:13px; letter-spacing:0.5px; z-index:60; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
 
   .confirm-overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center; z-index:70; }
-  .countdown-badge{ position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:70; background: var(--gold); border:2px solid #f2b559; border-radius:16px; padding:14px 28px; text-align:center; box-shadow: 0 12px 32px rgba(0,0,0,0.5); display:flex; align-items:center; gap:16px; animation: countdownPulse 1s ease-in-out infinite; }
-  @keyframes countdownPulse{ 0%,100%{ transform:translateX(-50%) scale(1); } 50%{ transform:translateX(-50%) scale(1.04); } }
-  @media (max-width:800px){ .countdown-badge{ bottom:96px; } }
+  .countdown-badge{ position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:70; background: var(--gold); border:2px solid #f2b559; border-radius:16px; padding:14px 28px; text-align:center; box-shadow: 0 12px 32px rgba(0,0,0,0.5); display:flex; align-items:center; gap:16px; animation: countdownPulse 1s ease-in-out infinite; }
+  @keyframes countdownPulse{ 0%,100%{ transform:translate(-50%,-50%) scale(1); } 50%{ transform:translate(-50%,-50%) scale(1.04); } }
   .countdown-label{ font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:#4a3611; font-weight:700; }
   .countdown-number{ font-size:56px; font-weight:800; color:#181410; line-height:1; }
   .countdown-badge .close-btn{ background:#181410; border:1px solid #181410; color:var(--gold); padding:6px 14px; border-radius:6px; font-size:11px; letter-spacing:1px; text-transform:uppercase; font-weight:700; }
@@ -178,7 +177,7 @@
 <div id="root">
   <div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#9a8f80;">Loading your setlist…</div>
 </div>
-<div class="trademark">MEMAPHU™ · v10</div>
+<div class="trademark">MEMAPHU™ · v11</div>
 
 <script>
 (function(){
