@@ -160,6 +160,9 @@
   .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background: var(--surface-2); border:1px solid var(--gold-dim); color:var(--text); padding: 10px 18px; border-radius:8px; font-size:13px; letter-spacing:0.5px; z-index:60; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
 
   .confirm-overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center; z-index:70; }
+  .countdown-box{ background: var(--surface); border:1px solid var(--line); border-radius:16px; padding:32px 40px; text-align:center; box-shadow: 0 16px 40px rgba(0,0,0,0.5); }
+  .countdown-label{ font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+  .countdown-number{ font-size:88px; font-weight:800; color:var(--gold); line-height:1; margin-bottom:18px; }
   .confirm-box{ background: var(--surface); border:1px solid var(--line); border-radius:10px; padding:20px 22px; max-width:320px; text-align:center; }
   .confirm-box p{ margin:0 0 16px; font-size:14px; color:var(--text); line-height:1.5; }
   .confirm-row{ display:flex; gap:10px; }
@@ -456,6 +459,8 @@
     transposeSteps: 0,
     autoScroll: false,
     scrollSpeed: 3,
+    countInSeconds: 4,
+    countdownRemaining: null,
     fontSize: 19,
     sidebarOpen: false,
     confirmDelete: null,
@@ -464,6 +469,7 @@
 
   var toastTimer = null;
   var scrollAnimId = null;
+  var countdownTimerId = null;
 
   function getActiveSong(){
     if(!state.songs) return null;
@@ -812,9 +818,50 @@
   }
 
   function toggleAutoScroll(){
-    state.autoScroll = !state.autoScroll;
-    if(state.autoScroll) startAutoScroll(); else stopAutoScroll();
-    renderToolbarOnly();
+    if(state.autoScroll){
+      state.autoScroll = false;
+      stopAutoScroll();
+      renderToolbarOnly();
+      return;
+    }
+    if(state.countdownRemaining != null){
+      // Already counting down — treat a second click as cancel.
+      stopCountdown();
+      render();
+      return;
+    }
+    startCountdown();
+  }
+
+  function startCountdown(){
+    stopCountdown();
+    if(!state.countInSeconds || state.countInSeconds <= 0){
+      state.autoScroll = true;
+      startAutoScroll();
+      renderToolbarOnly();
+      return;
+    }
+    state.countdownRemaining = state.countInSeconds;
+    render();
+    countdownTimerId = setInterval(function(){
+      state.countdownRemaining -= 1;
+      if(state.countdownRemaining <= 0){
+        clearInterval(countdownTimerId);
+        countdownTimerId = null;
+        state.countdownRemaining = null;
+        state.autoScroll = true;
+        render();
+        startAutoScroll();
+      } else {
+        var numEl = document.getElementById('countdown-number');
+        if(numEl) numEl.textContent = state.countdownRemaining;
+      }
+    }, 1000);
+  }
+
+  function stopCountdown(){
+    if(countdownTimerId){ clearInterval(countdownTimerId); countdownTimerId = null; }
+    state.countdownRemaining = null;
   }
 
   function focusTitleInput(){
@@ -892,9 +939,12 @@
       if(state.transposeSteps !== 0) html += '<button class="tool-btn" id="btn-key-reset" style="font-size:11px;">0</button>';
       html += '</div>';
 
-      html += '<div class="tool-group"><button class="tool-btn wide' + (state.autoScroll ? ' on' : '') + '" id="btn-autoscroll">' + (state.autoScroll ? '\u23F8 SCROLLING' : '\u25B6 SCROLL') + '</button>';
+      html += '<div class="tool-group"><button class="tool-btn wide' + (state.autoScroll ? ' on' : '') + '" id="btn-autoscroll">' + (state.countdownRemaining != null ? '\u23F1 ' + state.countdownRemaining + '\u2026' : (state.autoScroll ? '\u23F8 SCROLLING' : '\u25B6 SCROLL')) + '</button>';
       html += '<span class="label-sm" style="margin-left:6px;">Speed</span>';
-      html += '<input class="speed-slider" type="range" min="1" max="10" value="' + state.scrollSpeed + '" id="range-speed" /></div>';
+      html += '<input class="speed-slider" type="range" min="1" max="10" value="' + state.scrollSpeed + '" id="range-speed" />';
+      html += '<span class="label-sm" style="margin-left:6px;">Count-in</span>';
+      html += '<input class="speed-slider" style="width:44px;" type="number" min="0" max="15" value="' + state.countInSeconds + '" id="count-in-input" />';
+      html += '<span class="label-sm">s</span></div>';
 
       html += '<div class="tool-group"><span class="label-sm">Aa</span><input class="fontsize-slider" type="range" min="12" max="36" value="' + state.fontSize + '" id="range-font" /></div>';
 
@@ -950,6 +1000,14 @@
         html += '<h3>' + escapeHtml(state.chordModal) + '</h3><p class="approx-note">Walang diagram na nakita</p>';
       }
       html += '<button class="close-btn" id="btn-close-chord">Close</button>';
+      html += '</div></div>';
+    }
+
+    if(state.countdownRemaining != null){
+      html += '<div class="confirm-overlay" id="countdown-overlay"><div class="countdown-box">';
+      html += '<div class="countdown-label">Mag-uumpisa ang scroll sa loob ng</div>';
+      html += '<div class="countdown-number" id="countdown-number">' + state.countdownRemaining + '</div>';
+      html += '<button class="close-btn" id="btn-cancel-countdown">Cancel</button>';
       html += '</div></div>';
     }
 
@@ -1010,6 +1068,12 @@
 
     if(byId('btn-autoscroll')) byId('btn-autoscroll').onclick = toggleAutoScroll;
     if(byId('range-speed')) byId('range-speed').oninput = function(e){ state.scrollSpeed = Number(e.target.value); };
+    if(byId('count-in-input')) byId('count-in-input').oninput = function(e){
+      var v = Number(e.target.value);
+      state.countInSeconds = isNaN(v) ? 0 : Math.max(0, Math.min(15, v));
+    };
+    if(byId('btn-cancel-countdown')) byId('btn-cancel-countdown').onclick = function(){ stopCountdown(); render(); };
+    if(byId('countdown-overlay')) byId('countdown-overlay').onclick = function(e){ if(e.target.id === 'countdown-overlay'){ stopCountdown(); render(); } };
     if(byId('range-font')) byId('range-font').oninput = function(e){
       state.fontSize = Number(e.target.value);
       var chart = document.querySelector('.chart');
