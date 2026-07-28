@@ -1,6 +1,6 @@
 {
   "name": "Gig Song Hits",
-  "short_name": "Gig Hits",
+  "short_name": "Gig Song Hits",
   "description": "Your on-stage songbook — chords, transpose, and auto-scroll for gigs.",
   "start_url": "./index.html",
   "scope": "./",
