@@ -764,21 +764,31 @@
     scrollAnimId = null;
   }
 
+  var userTouchingStage = false;
+
   function startAutoScroll(){
     stopAutoScroll();
     var el = document.getElementById('stage');
     if(!el) return;
     var lastTs = null;
+    // Float accumulator avoids sub-pixel rounding loss at slow speeds, but is
+    // resynced to the real scrollTop whenever the user is touching the screen,
+    // so manual scroll always wins and autoscroll resumes from there smoothly.
+    var pos = el.scrollTop;
     function step(ts){
       if(!state.autoScroll){ return; }
-      if(lastTs == null){ lastTs = ts; scrollAnimId = requestAnimationFrame(step); return; }
+      if(lastTs == null){ lastTs = ts; pos = el.scrollTop; scrollAnimId = requestAnimationFrame(step); return; }
       var dt = (ts - lastTs) / 1000;
       lastTs = ts;
+      if(userTouchingStage){
+        // Fully hands-off while the user is scrolling manually.
+        pos = el.scrollTop;
+        scrollAnimId = requestAnimationFrame(step);
+        return;
+      }
       var pxPerSec = 4 + state.scrollSpeed * 4; // gentler range: ~8px/s to ~44px/s
-      // Read the current scroll position fresh each frame (instead of a detached
-      // accumulator) so manual up/down scrolling by the user is respected and
-      // autoscroll continues smoothly from wherever they leave it.
-      el.scrollTop = el.scrollTop + pxPerSec * dt;
+      pos += pxPerSec * dt;
+      el.scrollTop = pos;
       if(el.scrollTop + el.clientHeight >= el.scrollHeight - 2){
         state.autoScroll = false;
         renderToolbarOnly();
@@ -994,8 +1004,11 @@
       if(chart) chart.style.fontSize = state.fontSize + 'px';
     };
 
-    // Two-finger pinch on the lyrics area resizes the font (replaces native browser pinch-zoom,
-    // which is disabled via the viewport meta tag so it doesn't fight this).
+    // Touch handling on the lyrics area does two things:
+    // 1) Tracks whether the user currently has a finger down, so autoscroll
+    //    (see startAutoScroll) steps aside and lets manual scrolling take over.
+    // 2) Two-finger pinch resizes the font directly (native browser pinch-zoom
+    //    is blocked via touch-action:pan-y in CSS, so this replaces it).
     var stageEl = byId('stage');
     if(stageEl){
       var pinchStartDist = null;
@@ -1006,14 +1019,21 @@
         return Math.sqrt(dx*dx + dy*dy);
       }
       stageEl.addEventListener('touchstart', function(e){
+        userTouchingStage = true;
         if(e.touches.length === 2){
+          e.preventDefault();
           pinchStartDist = touchDist(e.touches);
           pinchStartFont = state.fontSize;
         }
-      }, { passive: true });
+      }, { passive: false });
       stageEl.addEventListener('touchmove', function(e){
-        if(e.touches.length === 2 && pinchStartDist){
+        if(e.touches.length === 2){
           e.preventDefault();
+          if(!pinchStartDist){
+            pinchStartDist = touchDist(e.touches);
+            pinchStartFont = state.fontSize;
+            return;
+          }
           var newDist = touchDist(e.touches);
           var ratio = newDist / pinchStartDist;
           var newSize = Math.round(pinchStartFont * ratio);
@@ -1029,6 +1049,10 @@
       }, { passive: false });
       stageEl.addEventListener('touchend', function(e){
         if(e.touches.length < 2){ pinchStartDist = null; pinchStartFont = null; }
+        if(e.touches.length === 0){ userTouchingStage = false; }
+      }, { passive: true });
+      stageEl.addEventListener('touchcancel', function(e){
+        pinchStartDist = null; pinchStartFont = null; userTouchingStage = false;
       }, { passive: true });
     }
 
