@@ -1056,10 +1056,11 @@
       html += '<div class="tool-group"><span class="label-sm">Aa</span><input class="fontsize-slider" type="range" min="12" max="36" value="' + state.fontSize + '" id="range-font" /></div>';
 
       html += '<div class="tool-group"><button class="tool-btn wide' + (state.mode === 'edit' ? ' on' : '') + '" id="btn-toggle-mode">' + (state.mode === 'edit' ? 'DONE' : 'EDIT') + '</button></div>';
-
-      html += '<div class="spacer"></div>';
-      html += '<button class="icon-btn" id="btn-import-top">Import</button>';
-      html += '<button class="icon-btn" id="btn-import-url-top">\uD83D\uDD17 URL</button>';
+    }
+    html += '<div class="spacer"></div>';
+    html += '<button class="icon-btn" id="btn-import-top">Import</button>';
+    html += '<button class="icon-btn" id="btn-import-url-top">\uD83D\uDD17 URL</button>';
+    if(song){
       html += '<button class="icon-btn" id="btn-export">Export</button>';
       html += '<button class="icon-btn" id="btn-delete" style="color:var(--danger);">Delete</button>';
     }
@@ -1067,7 +1068,7 @@
 
     html += '  <div class="stage" id="stage">';
     if(!song){
-      html += '<div class="empty-stage"><div class="big">\uD83C\uDFA4</div><h2>Wala pang napiling kanta</h2><p>Gumawa ng bago o mag-import ng chord sheet para makapagsimula sa gig mo.</p><button class="icon-btn" id="btn-new-empty">+ New Song</button></div>';
+      html += '<div class="empty-stage"><div class="big">\uD83C\uDFA4</div><h2>Wala pang napiling kanta</h2><p>Gumawa ng bago o mag-import ng chord sheet para makapagsimula sa gig mo.</p><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;"><button class="icon-btn" id="btn-new-empty">+ New Song</button><button class="icon-btn" id="btn-import-empty">Import File</button><button class="icon-btn" id="btn-import-url-empty">\uD83D\uDD17 Import URL</button></div></div>';
     } else if(state.mode === 'view'){
       html += '<div class="song-title-row"><span class="main-title">' + escapeHtml(song.title || 'Untitled') + '</span></div>';
       html += '<div class="song-meta"><span>Key: ' + displayedKey + '</span>';
@@ -1146,6 +1147,8 @@
 
     if(byId('btn-new')) byId('btn-new').onclick = createSong;
     if(byId('btn-new-empty')) byId('btn-new-empty').onclick = createSong;
+    if(byId('btn-import-empty')) byId('btn-import-empty').onclick = function(){ var fi = byId('file-input'); if(fi) fi.click(); };
+    if(byId('btn-import-url-empty')) byId('btn-import-url-empty').onclick = openUrlImport;
     if(byId('btn-toggle-sidebar')) byId('btn-toggle-sidebar').onclick = function(){ state.sidebarOpen = !state.sidebarOpen; render(); };
     if(byId('btn-close-side')) byId('btn-close-side').onclick = function(){ state.sidebarOpen = false; render(); };
 
