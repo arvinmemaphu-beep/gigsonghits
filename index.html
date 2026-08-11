@@ -448,7 +448,7 @@
 
   function uid(){ return 's_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
 
-  var SAMPLE_BODY = "[G]Sana'y di na lang totoong nagbago ka\n[Em]Baliktad man ang mundo't magunaw\n[C]Wag ka lang sana [D]lumayo, tumigil sa piling ko\n\nIka'y aking iidolo\n[G]Kahit ilang beses [Em]mong sasabihing\n[C]hindi mo na kayang [D]tumigil, magpaiwan";
+  var SAMPLE_BODY = "ATE\nby memaphu\n\nIntro: G - Bm7 - Em - Am7 - F - D7sus\n\nG          Bm7             Em      Am7                 F              D7sus\nTe, anong nangyayari? Bat tila tulala, at di ka mapakali?\nG          Bm7             Em      Am7                 F              D7sus\nTe, bat di ka magsabi, Kung may problema, sa aki'y tumabi.\n\nKORO\nC                          G        C                           G\nTenga koy nakaabang, Pwedeng ibulong, mo lang,\nBalikat koy nakaabang, yumakap ka, ang uloy isandal.\nEm                          Am7        F           D7sus\nWag kang mahihiya. O maiilang, ako ay andito lang\nG          Bm7             Em      Am7                 F              D7sus\nTe, kung nahihirapan, sayo ako ay laging, handang pumasan.\nG          Bm7             Em      Am7                 F              D7sus\nEy, wag ka ng malumbay, di bagay sayo, ang salubong na kilay.\n\n(Ulitin ang KORO)\n\nAdlib 2x: G - Bm7 - Em - Am7 - F - D7sus\n\n(Ulitin ang KORO)\n\nG          Bm7             Em      Am7                 F              D7sus\nGanyan nga, ngumiti wag humikbi, kunting relaks naman, maniwala at magtiwala.\nG          Bm7             Em      Am7                 F              D7sus\nDiba, lahat may problema, lahat ay makakaya, bastat manalig at wag mawalan ng pag asa.\n\n(Ulitin ang KORO 1x)\n(Adlib - koro)\n(Ulitin koro)";
 
   // ---- App state ----
   var state = {
@@ -572,7 +572,7 @@
 
     if(!ids || ids.length === 0){
       var id = uid();
-      var song = { id: id, title: "Halik", key: "G", bpm: "", folder: "Gig", body: SAMPLE_BODY };
+      var song = { id: id, title: "Ate", key: "G", bpm: "", folder: "Gig", body: SAMPLE_BODY };
       await persistSong(song);
       await persistIndex([song]);
       state.songs = [song];
@@ -594,7 +594,7 @@
     }
     if(loaded.length === 0){
       var id2 = uid();
-      var song2 = { id: id2, title: "Halik", key: "G", bpm: "", folder: "Gig", body: SAMPLE_BODY };
+      var song2 = { id: id2, title: "Ate", key: "G", bpm: "", folder: "Gig", body: SAMPLE_BODY };
       loaded = [song2];
       await persistSong(song2);
       await persistIndex(loaded);
