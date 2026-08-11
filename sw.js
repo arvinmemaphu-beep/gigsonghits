@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gig-song-hits-v11';
+const CACHE_NAME = 'gig-song-hits-v12';
 const ASSETS = [
   './',
   './index.html',
@@ -23,11 +23,28 @@ self.addEventListener('activate', function(event){
 });
 
 self.addEventListener('fetch', function(event){
-  event.respondWith(
-    caches.match(event.request).then(function(cached){
-      return cached || fetch(event.request).then(function(res){
+  var req = event.request;
+  var isHtml = req.mode === 'navigate' || (req.headers.get('accept') || '').indexOf('text/html') !== -1;
+
+  if(isHtml){
+    // Network-first for the app shell so updates show up immediately when online;
+    // falls back to the cached copy when offline.
+    event.respondWith(
+      fetch(req).then(function(res){
         var resClone = res.clone();
-        caches.open(CACHE_NAME).then(function(cache){ cache.put(event.request, resClone); });
+        caches.open(CACHE_NAME).then(function(cache){ cache.put(req, resClone); });
+        return res;
+      }).catch(function(){ return caches.match(req).then(function(cached){ return cached || caches.match('./index.html'); }); })
+    );
+    return;
+  }
+
+  // Cache-first for static assets (icons, manifest) — they rarely change.
+  event.respondWith(
+    caches.match(req).then(function(cached){
+      return cached || fetch(req).then(function(res){
+        var resClone = res.clone();
+        caches.open(CACHE_NAME).then(function(cache){ cache.put(req, resClone); });
         return res;
       }).catch(function(){ return cached; });
     })
