@@ -82,6 +82,13 @@
   .folder-card .count{ font-size:11px; color:var(--muted); letter-spacing:0.5px; }
   .folder-card.all{ background: rgba(79,168,160,0.08); border-color: rgba(79,168,160,0.25); }
   .folder-card.all .ico{ color: var(--teal); }
+  .folder-actions{ display:flex; gap:4px; flex-shrink:0; }
+  .folder-action-btn{ background:transparent; border:1px solid var(--line); color:var(--muted); width:26px; height:26px; border-radius:5px; font-size:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .folder-action-btn:hover{ border-color: var(--gold-dim); color: var(--gold); background: rgba(232,163,61,0.08); }
+  .folder-action-btn.danger:hover{ border-color: var(--danger); color: var(--danger); background: rgba(201,98,86,0.10); }
+  .folder-card.renaming{ cursor:default; }
+  .rename-folder-input{ flex:1; min-width:0; background:var(--surface-2); border:1px solid var(--gold-dim); color:var(--text); border-radius:5px; padding:6px 8px; font-size:13px; }
+  .rename-folder-input:focus{ outline:none; border-color: var(--gold); }
 
   .folder-header{ display:flex; align-items:center; gap:8px; padding: 12px 12px 8px; }
   .back-btn{ background:var(--surface-2); border:1px solid var(--line); color:var(--text); width:28px; height:28px; border-radius:6px; font-size:14px; display:flex; align-items:center; justify-content:center; }
@@ -468,6 +475,8 @@
     fontSize: 19,
     sidebarOpen: false,
     confirmDelete: null,
+    renamingFolder: null,
+    confirmDeleteFolder: null,
     chordModal: null,
     urlImportOpen: false,
     urlImportValue: '',
@@ -683,6 +692,85 @@
     state.addingFolder = false;
     render();
     showToast('Folder "' + name + '" added');
+  }
+
+  function startRenameFolder(name){
+    state.renamingFolder = name;
+    state.addingFolder = false;
+    render();
+    setTimeout(function(){
+      var inp = document.getElementById('rename-folder-input');
+      if(inp){ inp.focus(); inp.select(); }
+    }, 30);
+  }
+
+  function cancelRenameFolder(){
+    state.renamingFolder = null;
+    render();
+  }
+
+  // Renaming updates the folder-list entry (or merges into an existing folder of
+  // the target name) and re-tags every song currently filed under the old name.
+  async function renameFolder(oldName, newName){
+    var trimmed = (newName || '').trim();
+    if(!trimmed || trimmed === oldName){ state.renamingFolder = null; render(); return; }
+
+    var idx = state.folderList.indexOf(oldName);
+    if(idx !== -1){
+      if(state.folderList.indexOf(trimmed) === -1){
+        state.folderList[idx] = trimmed;
+      } else {
+        // Target name already exists as a folder — merge by dropping the old entry.
+        state.folderList.splice(idx, 1);
+      }
+    } else {
+      await ensureFolder(trimmed);
+    }
+    await persistFolderList();
+
+    for(var i=0;i<state.songs.length;i++){
+      var s = state.songs[i];
+      if((s.folder || 'Gig') === oldName){
+        s.folder = trimmed;
+        await persistSong(s);
+      }
+    }
+    if(state.currentFolder === oldName) state.currentFolder = trimmed;
+    state.renamingFolder = null;
+    render();
+    showToast('Napalitan ang pangalan sa "' + trimmed + '"');
+  }
+
+  function requestDeleteFolder(name){
+    state.confirmDeleteFolder = name;
+    render();
+  }
+
+  function cancelDeleteFolder(){
+    state.confirmDeleteFolder = null;
+    render();
+  }
+
+  // Deleting a folder never deletes songs — any song still filed under it gets
+  // moved to "Gig" so nothing accidentally disappears.
+  async function deleteFolderConfirmed(){
+    var name = state.confirmDeleteFolder;
+    if(!name) return;
+    var moved = 0;
+    for(var i=0;i<state.songs.length;i++){
+      var s = state.songs[i];
+      if((s.folder || 'Gig') === name && name !== 'Gig'){
+        s.folder = 'Gig';
+        moved++;
+        await persistSong(s);
+      }
+    }
+    state.folderList = state.folderList.filter(function(f){ return f !== name; });
+    await persistFolderList();
+    if(state.currentFolder === name) state.currentFolder = null;
+    state.confirmDeleteFolder = null;
+    render();
+    showToast(moved > 0 ? ('Tinanggal ang folder. ' + moved + ' kanta inilipat sa "Gig"') : 'Tinanggal ang folder');
   }
 
   function handleImportFile(e){
@@ -1006,7 +1094,11 @@
       html += '    <div class="folder-card all" data-folder="__all__"><span class="ico">\uD83C\uDFB5</span><div class="info"><span class="name">All Songs</span><span class="count">' + totalCount + ' song' + (totalCount===1?'':'s') + '</span></div></div>';
       folders.forEach(function(f){
         var count = state.songs.filter(function(s){ return (s.folder || 'Gig') === f; }).length;
-        html += '    <div class="folder-card" data-folder="' + escapeHtml(f) + '"><span class="ico">\uD83D\uDCC1</span><div class="info"><span class="name">' + escapeHtml(f) + '</span><span class="count">' + count + ' song' + (count===1?'':'s') + '</span></div></div>';
+        if(state.renamingFolder === f){
+          html += '    <div class="folder-card renaming" data-folder="' + escapeHtml(f) + '"><span class="ico">\uD83D\uDCC1</span><input id="rename-folder-input" class="rename-folder-input" value="' + escapeHtml(f) + '" maxlength="40" /><div class="folder-actions"><button class="folder-action-btn" data-rename-confirm="' + escapeHtml(f) + '" title="Save">\u2713</button><button class="folder-action-btn" data-rename-cancel="1" title="Cancel">\u2715</button></div></div>';
+        } else {
+          html += '    <div class="folder-card" data-folder="' + escapeHtml(f) + '"><span class="ico">\uD83D\uDCC1</span><div class="info"><span class="name">' + escapeHtml(f) + '</span><span class="count">' + count + ' song' + (count===1?'':'s') + '</span></div><div class="folder-actions"><button class="folder-action-btn" data-rename="' + escapeHtml(f) + '" title="Rename">\u270E</button><button class="folder-action-btn danger" data-delfolder="' + escapeHtml(f) + '" title="Delete">\uD83D\uDDD1\uFE0F</button></div></div>';
+        }
       });
       html += '  </div>';
       html += '  <div class="sidebar-foot"><button class="foot-btn" id="btn-import-side">Import</button><button class="foot-btn" id="btn-import-url-side">\uD83D\uDD17 URL</button>' + (state.sidebarOpen ? '<button class="foot-btn" id="btn-close-side">Close</button>' : '') + '</div>';
@@ -1098,6 +1190,19 @@
       html += '</div></div>';
     }
 
+    if(state.confirmDeleteFolder){
+      var fdName = state.confirmDeleteFolder;
+      var fdCount = state.songs.filter(function(s){ return (s.folder || 'Gig') === fdName; }).length;
+      html += '<div class="confirm-overlay" id="confirm-overlay-folder"><div class="confirm-box">';
+      if(fdCount > 0){
+        html += '<p>Tanggalin ang folder na "' + escapeHtml(fdName) + '"? May ' + fdCount + ' kanta dito \u2014 ililipat ito sa "Gig" folder, hindi mabubura.</p>';
+      } else {
+        html += '<p>Tanggalin ang folder na "' + escapeHtml(fdName) + '"? Wala itong laman.</p>';
+      }
+      html += '<div class="confirm-row"><button id="btn-cancel-delete-folder">Cancel</button><button class="danger-btn" id="btn-confirm-delete-folder">Delete</button></div>';
+      html += '</div></div>';
+    }
+
     if(state.chordModal){
       var shape = getChordShape(state.chordModal);
       html += '<div class="confirm-overlay" id="chord-overlay"><div class="chord-modal">';
@@ -1154,8 +1259,42 @@
 
     var folderCards = document.querySelectorAll('.folder-card');
     folderCards.forEach(function(el){
+      if(el.classList.contains('renaming')) return;
       el.onclick = function(){ openFolder(el.getAttribute('data-folder')); };
     });
+
+    var renameBtns = document.querySelectorAll('[data-rename]');
+    renameBtns.forEach(function(btn){
+      btn.onclick = function(e){ e.stopPropagation(); startRenameFolder(btn.getAttribute('data-rename')); };
+    });
+    var delFolderBtns = document.querySelectorAll('[data-delfolder]');
+    delFolderBtns.forEach(function(btn){
+      btn.onclick = function(e){ e.stopPropagation(); requestDeleteFolder(btn.getAttribute('data-delfolder')); };
+    });
+    var renameConfirmBtns = document.querySelectorAll('[data-rename-confirm]');
+    renameConfirmBtns.forEach(function(btn){
+      btn.onclick = function(e){
+        e.stopPropagation();
+        var inp = byId('rename-folder-input');
+        renameFolder(btn.getAttribute('data-rename-confirm'), inp ? inp.value : '');
+      };
+    });
+    var renameCancelBtns = document.querySelectorAll('[data-rename-cancel]');
+    renameCancelBtns.forEach(function(btn){
+      btn.onclick = function(e){ e.stopPropagation(); cancelRenameFolder(); };
+    });
+    var renameFolderInput = byId('rename-folder-input');
+    if(renameFolderInput){
+      renameFolderInput.onclick = function(e){ e.stopPropagation(); };
+      renameFolderInput.onkeydown = function(e){
+        if(e.key === 'Enter'){ e.preventDefault(); renameFolder(state.renamingFolder, renameFolderInput.value); }
+        if(e.key === 'Escape'){ cancelRenameFolder(); }
+      };
+    }
+    if(byId('btn-cancel-delete-folder')) byId('btn-cancel-delete-folder').onclick = cancelDeleteFolder;
+    if(byId('btn-confirm-delete-folder')) byId('btn-confirm-delete-folder').onclick = deleteFolderConfirmed;
+    if(byId('confirm-overlay-folder')) byId('confirm-overlay-folder').onclick = function(e){ if(e.target.id === 'confirm-overlay-folder') cancelDeleteFolder(); };
+
     if(byId('btn-back-folders')) byId('btn-back-folders').onclick = backToFolders;
     if(byId('btn-add-folder-toggle')) byId('btn-add-folder-toggle').onclick = function(){
       state.addingFolder = !state.addingFolder;
