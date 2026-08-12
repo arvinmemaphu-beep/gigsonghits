@@ -136,6 +136,14 @@
   .song-meta{ display:flex; gap:16px; color:var(--muted); font-size:12px; letter-spacing:1px; text-transform:uppercase; margin-bottom:22px; align-items:center; }
   .song-meta input{ background:none; border:none; color:var(--muted); font-size:12px; letter-spacing:1px; text-transform:uppercase; width:60px; border-bottom:1px dashed var(--line); }
   .song-meta input:focus{ outline:none; color:var(--teal); }
+  .bpm-input{ background: var(--surface-2) !important; border:1px solid var(--teal) !important; color: var(--teal) !important; border-radius:6px; padding:6px 8px !important; width:56px !important; }
+  .bpm-input:focus{ outline:none; border-color: var(--teal) !important; color: var(--text) !important; }
+  .folder-select{ background: var(--surface-2); border:1px solid var(--gold-dim); color: var(--gold); font-family:inherit; font-size:12px; letter-spacing:0.5px; text-transform:uppercase; padding:6px 8px; border-radius:6px; max-width:150px; }
+  .folder-select:focus{ outline:none; border-color: var(--gold); }
+  .folder-new-row{ display:inline-flex; gap:6px; align-items:center; }
+  .folder-new-row input{ background:var(--surface-2); border:1px solid var(--gold-dim); color:var(--text); border-radius:5px; padding:6px 8px; font-size:12px; text-transform:none; letter-spacing:normal; width:110px; }
+  .folder-new-row button{ background:var(--gold); color:#181410; border:none; border-radius:5px; padding:6px 9px; font-size:11px; font-weight:700; }
+  .folder-new-row .cancel-x{ background:var(--surface-2); color:var(--text); border:1px solid var(--line); padding:6px 9px; }
 
   .chart{ font-family: 'Roboto Mono', 'DejaVu Sans Mono', 'Consolas', 'Menlo', monospace; line-height: 2.15; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; }
   .chord-line{ color: var(--gold); font-weight:700; letter-spacing:0.5px; }
@@ -455,6 +463,15 @@
 
   function uid(){ return 's_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
 
+  // Maps a song's BPM to a 1-10 auto-scroll speed so faster songs scroll faster
+  // and ballads scroll slower, without the user having to set the slider by hand.
+  function computeScrollSpeedFromBpm(bpmVal){
+    var n = parseInt(bpmVal, 10);
+    if(!n || isNaN(n) || n <= 0) return null;
+    var speed = Math.round(n / 20);
+    return Math.max(1, Math.min(10, speed));
+  }
+
   var SAMPLE_BODY = "ATE\nby memaphu\n\nIntro: G - Bm7 - Em - Am7 - F - D7sus\n\nG          Bm7             Em      Am7                 F              D7sus\nTe, anong nangyayari? Bat tila tulala, at di ka mapakali?\nG          Bm7             Em      Am7                 F              D7sus\nTe, bat di ka magsabi, Kung may problema, sa aki'y tumabi.\n\nKORO\nC                          G        C                           G\nTenga koy nakaabang, Pwedeng ibulong, mo lang,\nBalikat koy nakaabang, yumakap ka, ang uloy isandal.\nEm                          Am7        F           D7sus\nWag kang mahihiya. O maiilang, ako ay andito lang\nG          Bm7             Em      Am7                 F              D7sus\nTe, kung nahihirapan, sayo ako ay laging, handang pumasan.\nG          Bm7             Em      Am7                 F              D7sus\nEy, wag ka ng malumbay, di bagay sayo, ang salubong na kilay.\n\n(Ulitin ang KORO)\n\nAdlib 2x: G - Bm7 - Em - Am7 - F - D7sus\n\n(Ulitin ang KORO)\n\nG          Bm7             Em      Am7                 F              D7sus\nGanyan nga, ngumiti wag humikbi, kunting relaks naman, maniwala at magtiwala.\nG          Bm7             Em      Am7                 F              D7sus\nDiba, lahat may problema, lahat ay makakaya, bastat manalig at wag mawalan ng pag asa.\n\n(Ulitin ang KORO 1x)\n(Adlib - koro)\n(Ulitin koro)";
 
   // ---- App state ----
@@ -477,6 +494,7 @@
     confirmDelete: null,
     renamingFolder: null,
     confirmDeleteFolder: null,
+    editorNewFolder: false,
     chordModal: null,
     urlImportOpen: false,
     urlImportValue: '',
@@ -610,6 +628,8 @@
     }
     state.songs = loaded;
     state.activeId = loaded[0].id;
+    var initSpeed = computeScrollSpeedFromBpm(loaded[0].bpm);
+    if(initSpeed) state.scrollSpeed = initSpeed;
     render();
   }
 
@@ -666,8 +686,12 @@
     state.sidebarOpen = false;
     state.autoScroll = false;
     state.scrollStarted = false;
+    state.editorNewFolder = false;
     stopAutoScroll();
     stopCountdown();
+    var s = getActiveSong();
+    var sp = s ? computeScrollSpeedFromBpm(s.bpm) : null;
+    if(sp) state.scrollSpeed = sp;
     render();
   }
 
@@ -1172,7 +1196,21 @@
     } else {
       html += '<div class="editor-wrap">';
       html += '<div class="song-title-row"><input class="title-input" id="edit-title" value="' + escapeHtml(song.title) + '" placeholder="Song title" /></div>';
-      html += '<div class="song-meta"><span>Key: <input id="edit-key" value="' + escapeHtml(song.key || '') + '" style="width:40px;" /></span><span>BPM: <input id="edit-bpm" value="' + escapeHtml(song.bpm || '') + '" style="width:50px;" /></span><span>Folder: <input id="edit-folder" list="folder-options" value="' + escapeHtml(song.folder || 'Gig') + '" style="width:90px;" /><datalist id="folder-options">' + getFolders().map(function(f){ return '<option value="' + escapeHtml(f) + '"></option>'; }).join('') + '</datalist></span></div>';
+      var folderOpts = getFolders();
+      var currentFolderVal = song.folder || 'Gig';
+      if(folderOpts.indexOf(currentFolderVal) === -1) folderOpts.push(currentFolderVal);
+      html += '<div class="song-meta"><span>Key: <input id="edit-key" value="' + escapeHtml(song.key || '') + '" style="width:40px;" /></span><span>BPM: <input id="edit-bpm" class="bpm-input" value="' + escapeHtml(song.bpm || '') + '" /></span><span>Folder: ';
+      if(state.editorNewFolder){
+        html += '<span class="folder-new-row"><input id="edit-folder-new-input" placeholder="Bagong folder" maxlength="40" /><button id="btn-editor-newfolder-confirm">Add</button><button class="cancel-x" id="btn-editor-newfolder-cancel">\u2715</button></span>';
+      } else {
+        html += '<select id="edit-folder" class="folder-select">';
+        folderOpts.forEach(function(f){
+          html += '<option value="' + escapeHtml(f) + '"' + (f === currentFolderVal ? ' selected' : '') + '>' + escapeHtml(f) + '</option>';
+        });
+        html += '<option value="__new__">+ New folder\u2026</option>';
+        html += '</select>';
+      }
+      html += '</span></div>';
       html += '<p class="editor-hint">Ilagay ang chords sa loob ng brackets bago ang syllable, hal. <code>[G]Sana\'y di na lang</code>. Pwede ring gumawa ng hiwalay na linya ng chords sa itaas ng lyrics.</p>';
       html += '<textarea class="editor" id="edit-body" spellcheck="false">' + escapeHtml(song.body) + '</textarea>';
       html += '</div>';
@@ -1406,6 +1444,7 @@
 
     if(byId('btn-toggle-mode')) byId('btn-toggle-mode').onclick = function(){
       state.mode = state.mode === 'edit' ? 'view' : 'edit';
+      state.editorNewFolder = false;
       render();
       if(state.mode === 'edit') focusTitleInput();
     };
@@ -1426,15 +1465,53 @@
     var editKey = byId('edit-key');
     if(editKey) editKey.oninput = function(e){ updateActiveSong({ key: e.target.value }); refreshSidebarLabelsSoft(); };
     var editBpm = byId('edit-bpm');
-    if(editBpm) editBpm.oninput = function(e){ updateActiveSong({ bpm: e.target.value }); refreshSidebarLabelsSoft(); };
+    if(editBpm) editBpm.oninput = function(e){
+      updateActiveSong({ bpm: e.target.value });
+      refreshSidebarLabelsSoft();
+      var sp = computeScrollSpeedFromBpm(e.target.value);
+      if(sp){
+        state.scrollSpeed = sp;
+        var slider = byId('range-speed');
+        if(slider) slider.value = sp;
+      }
+    };
     var editFolder = byId('edit-folder');
     if(editFolder) editFolder.onchange = async function(e){
-      var val = e.target.value.trim() || 'Gig';
+      var val = e.target.value;
+      if(val === '__new__'){
+        state.editorNewFolder = true;
+        render();
+        var nf = byId('edit-folder-new-input');
+        if(nf) nf.focus();
+        return;
+      }
+      val = val.trim() || 'Gig';
       await updateActiveSong({ folder: val });
       await ensureFolder(val);
       state.currentFolder = val;
       render();
     };
+    var newFolderConfirmBtn = byId('btn-editor-newfolder-confirm');
+    if(newFolderConfirmBtn) newFolderConfirmBtn.onclick = async function(){
+      var inp = byId('edit-folder-new-input');
+      var val = inp ? inp.value.trim() : '';
+      if(!val){ state.editorNewFolder = false; render(); return; }
+      await updateActiveSong({ folder: val });
+      await ensureFolder(val);
+      state.currentFolder = val;
+      state.editorNewFolder = false;
+      render();
+      showToast('Folder "' + val + '" added');
+    };
+    var newFolderCancelBtn = byId('btn-editor-newfolder-cancel');
+    if(newFolderCancelBtn) newFolderCancelBtn.onclick = function(){ state.editorNewFolder = false; render(); };
+    var editFolderNewInput = byId('edit-folder-new-input');
+    if(editFolderNewInput){
+      editFolderNewInput.onkeydown = function(e){
+        if(e.key === 'Enter'){ e.preventDefault(); newFolderConfirmBtn.click(); }
+        if(e.key === 'Escape'){ state.editorNewFolder = false; render(); }
+      };
+    }
     var editBody = byId('edit-body');
     if(editBody) editBody.oninput = function(e){ updateActiveSong({ body: e.target.value }); };
 
