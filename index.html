@@ -15,6 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 <style>
   :root{
     --bg: #0F0D0B;
@@ -172,7 +173,7 @@
 
   .file-input{ display:none; }
 
-  .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background: var(--surface-2); border:1px solid var(--gold-dim); color:var(--text); padding: 10px 18px; border-radius:8px; font-size:13px; letter-spacing:0.5px; z-index:60; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+  .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background: var(--surface-2); border:1px solid var(--gold-dim); color:var(--text); padding: 10px 18px; border-radius:8px; font-size:13px; letter-spacing:0.5px; z-index:200; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
 
   .confirm-overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center; z-index:70; }
   .countdown-badge{ position:fixed; bottom:28px; left:50%; transform:translateX(-50%); z-index:70; background: var(--gold); border:2px solid #f2b559; border-radius:16px; padding:14px 28px; text-align:center; box-shadow: 0 12px 32px rgba(0,0,0,0.5); display:flex; align-items:center; gap:16px; animation: countdownPulse 1s ease-in-out infinite; }
@@ -186,6 +187,24 @@
   .confirm-row{ display:flex; gap:10px; }
   .confirm-row button{ flex:1; padding:9px; border-radius:6px; border:1px solid var(--line); background:var(--surface-2); color:var(--text); font-size:12px; letter-spacing:1px; text-transform:uppercase; }
   .confirm-row .danger-btn{ background:var(--danger); border-color:var(--danger); color:#fff; }
+.shared-modal{ background: var(--surface); border:1px solid var(--line); border-radius:12px; padding:20px 22px; width:min(440px, 92vw); max-height:80vh; overflow-y:auto; text-align:left; box-shadow: 0 16px 40px rgba(0,0,0,0.5); }
+.shared-modal h3{ margin:0 0 4px; font-size:18px; color:var(--gold); }
+.shared-sub{ margin:0 0 14px; font-size:12px; color:var(--muted); line-height:1.5; }
+.shared-list{ display:flex; flex-direction:column; gap:6px; max-height:44vh; overflow-y:auto; margin-bottom:4px; }
+.shared-item{ border:1px solid var(--line); border-radius:8px; padding:8px 10px; background:var(--surface-2); }
+.shared-item-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.shared-item-title{ flex:1; text-align:left; background:none; border:none; color:var(--text); font-size:13px; font-weight:600; padding:2px 0; cursor:pointer; }
+.shared-item-title .k{ color:var(--teal); font-weight:400; font-size:11px; }
+.shared-import-btn{ flex:none; width:auto; padding:6px 10px; }
+.shared-song-preview{ margin-top:8px; padding-top:8px; border-top:1px dashed var(--line); max-height:180px; overflow-y:auto; }
+.share-link-input{ width:100%; background:var(--surface-2); border:1px solid var(--line); color:var(--text); border-radius:6px; padding:9px 10px; font-size:12px; margin-bottom:10px; box-sizing:border-box; }
+.folder-browse-path{ font-size:11px; color:var(--muted); letter-spacing:0.5px; margin: 0 0 10px; word-break:break-all; }
+.folder-browse-list{ display:flex; flex-direction:column; gap:6px; max-height:46vh; overflow-y:auto; margin-bottom:4px; }
+.fb-entry{ display:flex; align-items:center; gap:8px; border:1px solid var(--line); border-radius:8px; padding:8px 10px; background:var(--surface-2); }
+.fb-entry .fb-ico{ font-size:16px; flex:none; }
+.fb-entry .fb-name{ flex:1; min-width:0; font-size:13px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:left; background:none; border:none; cursor:pointer; }
+.fb-entry .fb-name:hover{ color:var(--gold); }
+.fb-up-row{ display:flex; align-items:center; gap:8px; padding: 4px 2px 8px; }
 </style>
 </head>
 <body>
@@ -499,7 +518,26 @@
     urlImportOpen: false,
     urlImportValue: '',
     urlImportBusy: false,
-    urlImportError: null
+    urlImportError: null,
+    shareModalOpen: false,
+    shareModalUrl: '',
+    sharedPreview: null,
+    sharedModalOpen: false,
+    sharedPreviewIdx: null,
+    sharedImportedIds: {},
+    sharedImportingAll: false,
+    folderBrowseOpen: false,
+    folderBrowseBusy: false,
+    folderBrowseError: null,
+    folderBrowseOwner: null,
+    folderBrowseRepo: null,
+    folderBrowseBranch: null,
+    folderBrowsePath: '',
+    folderBrowseEntries: null,
+    folderBrowseImportedPaths: {},
+    folderBrowseImportingAll: false,
+    folderBrowseConfirmAllOpen: false,
+    sharedConfirmAllOpen: false
   };
 
   var toastTimer = null;
@@ -848,11 +886,337 @@
       var urlObj = new URL(url);
       var parts = urlObj.pathname.split('/').filter(Boolean);
       if(parts.length){
-        var last = decodeURIComponent(parts[parts.length - 1]).replace(/\.(txt|cho|chopro|crd)$/i, '');
+        var last = decodeURIComponent(parts[parts.length - 1]).replace(/\.(txt|cho|chopro|crd|html?)$/i, '');
         if(last) return last;
       }
     }catch(e){}
     return 'Imported Song';
+  }
+
+  function decodeHtmlEntities(str){
+    var ta = document.createElement('textarea');
+    ta.innerHTML = str;
+    return ta.value;
+  }
+
+  function extractTextFromHtml(html){
+    var titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    var pageTitle = titleMatch ? decodeHtmlEntities(titleMatch[1]).trim() : null;
+    var cleaned = html
+      .replace(/<head[\s\S]*?<\/head>/i, '')
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<!--[\s\S]*?-->/g, '');
+    // Preserve line breaks for block-level elements before stripping tags
+    cleaned = cleaned.replace(/<br\s*\/?>/gi, '\n');
+    cleaned = cleaned.replace(/<\/(p|div|li|tr|h[1-6]|pre|section|article)>/gi, '\n');
+    cleaned = cleaned.replace(/<[^>]+>/g, '');
+    cleaned = decodeHtmlEntities(cleaned);
+    cleaned = cleaned.replace(/\r\n/g, '\n');
+    cleaned = cleaned.split('\n').map(function(l){ return l.replace(/[ \t]+$/, ''); }).join('\n');
+    cleaned = cleaned.replace(/[ \t]{2,}/g, ' ');
+    cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
+    return { text: cleaned, title: pageTitle };
+  }
+
+  async function addSingleSongToApp(title, bodyText, sourceUrl, targetFolderOverride){
+    var targetFolder = (targetFolderOverride !== undefined ? targetFolderOverride : state.currentFolder) || 'Gig';
+    var song = { id: uid(), title: title, key: "C", bpm: "", folder: targetFolder, body: bodyText.replace(/\s+$/, ''), sourceUrl: sourceUrl };
+    state.songs.push(song);
+    await ensureFolder(targetFolder);
+    await persistSong(song);
+    await persistIndex(state.songs);
+    return { kind: 'single', title: title, id: song.id };
+  }
+
+  // Shared import logic: given fetched text + the URL/content-type it came from,
+  // adds either a whole setlist (JSON) or a single song (txt/html) to state.songs.
+  // Used by both the direct URL importer and the GitHub folder browser below.
+  async function importContentAsSong(text, url, contentTypeHeader, targetFolderOverride){
+    var looksLikeJson = /\.json(\?|#|$)/i.test(url) || /^\s*[\{\[]/.test(text);
+    if(looksLikeJson){
+      var data = null;
+      try{ data = JSON.parse(text); }catch(e){ data = null; }
+      if(data){
+        var incomingSongs = Array.isArray(data.songs) ? data.songs : (Array.isArray(data) ? data : null);
+        if(incomingSongs && incomingSongs.length){
+          var targetFolder = targetFolderOverride !== undefined ? targetFolderOverride : state.currentFolder;
+          var addedCount = 0;
+          var firstAddedId = null;
+          for(var i=0;i<incomingSongs.length;i++){
+            var s = incomingSongs[i];
+            if(!s || !s.title) continue;
+            var folderForSong = targetFolder || s.folder || 'Gig';
+            var song = { id: uid(), title: s.title || 'Untitled', key: s.key || 'C', bpm: s.bpm || '', folder: folderForSong, body: s.body || '' };
+            state.songs.push(song);
+            await ensureFolder(folderForSong);
+            await persistSong(song);
+            if(!firstAddedId) firstAddedId = song.id;
+            addedCount++;
+          }
+          if(Array.isArray(data.folderList)){
+            data.folderList.forEach(function(f){ if(state.folderList.indexOf(f) === -1) state.folderList.push(f); });
+            await persistFolderList();
+          }
+          await persistIndex(state.songs);
+          return { kind: 'multi', count: addedCount, firstId: firstAddedId };
+        }
+      }
+      if(/\.json(\?|#|$)/i.test(url)) throw new Error('invalid-json');
+    }
+
+    var contentType = contentTypeHeader || '';
+    var looksLikeHtml = /\.html?(\?|#|$)/i.test(url) || /text\/html/i.test(contentType) || /^\s*<!doctype html|^\s*<html/i.test(text);
+    var title = filenameFromUrl(url);
+    var bodyText = text;
+    if(looksLikeHtml){
+      var extracted = extractTextFromHtml(text);
+      bodyText = extracted.text;
+      if(extracted.title) title = extracted.title;
+      if(!bodyText || !bodyText.trim()) throw new Error('empty');
+    }
+    return addSingleSongToApp(title, bodyText, url, targetFolderOverride);
+  }
+
+  // ---- Word (.docx) / PowerPoint (.pptx) reading ----
+  function xmlUnescape(str){
+    return str.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&');
+  }
+
+  function docxXmlToText(xml){
+    var s = xml
+      .replace(/<w:tab\s*\/?>/gi, '\t')
+      .replace(/<w:br\s*\/?>/gi, '\n')
+      .replace(/<\/w:p>/gi, '\n');
+    s = s.replace(/<[^>]+>/g, '');
+    s = xmlUnescape(s);
+    s = s.replace(/\r\n/g, '\n').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+    return s;
+  }
+
+  function pptxXmlToText(xml){
+    var s = xml.replace(/<\/a:p>/gi, '\n');
+    s = s.replace(/<[^>]+>/g, '');
+    s = xmlUnescape(s);
+    s = s.replace(/\r\n/g, '\n').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+    return s;
+  }
+
+  async function importOfficeFileFromUrl(url, targetFolderOverride){
+    if(typeof window.JSZip === 'undefined'){
+      throw new Error('jszip-missing');
+    }
+    var res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    var buf = await res.arrayBuffer();
+    var zip = await window.JSZip.loadAsync(buf);
+    var isDocx = /\.docx(\?|#|$)/i.test(url);
+    var isPptx = /\.pptx(\?|#|$)/i.test(url);
+    var text = '';
+    var title = null;
+
+    if(isDocx){
+      var docFile = zip.file('word/document.xml');
+      if(!docFile) throw new Error('bad-office-file');
+      var docXml = await docFile.async('string');
+      text = docxXmlToText(docXml);
+      var coreFile = zip.file('docProps/core.xml');
+      if(coreFile){
+        var coreXml = await coreFile.async('string');
+        var m = coreXml.match(/<dc:title[^>]*>([\s\S]*?)<\/dc:title>/i);
+        if(m && m[1].trim()) title = xmlUnescape(m[1].trim());
+      }
+    } else if(isPptx){
+      var slideNames = Object.keys(zip.files).filter(function(name){ return /^ppt\/slides\/slide\d+\.xml$/.test(name); });
+      slideNames.sort(function(a, b){
+        var na = parseInt(a.match(/slide(\d+)\.xml/)[1], 10);
+        var nb = parseInt(b.match(/slide(\d+)\.xml/)[1], 10);
+        return na - nb;
+      });
+      var slideTexts = [];
+      for(var i=0;i<slideNames.length;i++){
+        var sXml = await zip.file(slideNames[i]).async('string');
+        var t = pptxXmlToText(sXml);
+        if(t.trim()) slideTexts.push(t.trim());
+      }
+      text = slideTexts.join('\n\n');
+    } else {
+      throw new Error('unsupported-office');
+    }
+
+    if(!text || !text.trim()) throw new Error('empty');
+    if(!title) title = filenameFromUrl(url);
+    return addSingleSongToApp(title, text, url, targetFolderOverride);
+  }
+
+  // ---- GitHub "browse a folder, pick what to import" ----
+  function encodeApiPath(path){
+    return path.split('/').filter(Boolean).map(encodeURIComponent).join('/');
+  }
+
+  // Recognizes GitHub folder links in either form:
+  //   https://github.com/{owner}/{repo}/tree/{branch}/{path...}
+  //   https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path.../ or no extension}
+  function parseGithubFolderUrl(url){
+    try{
+      var u = new URL(url);
+      if(u.hostname === 'github.com'){
+        var parts = u.pathname.split('/').filter(Boolean);
+        if(parts.length >= 2){
+          var owner = parts[0], repo = parts[1];
+          if(parts.length === 2){
+            return { owner: owner, repo: repo, branch: null, path: '' };
+          }
+          if(parts[2] === 'tree' && parts.length >= 4){
+            return { owner: owner, repo: repo, branch: parts[3], path: parts.slice(4).join('/') };
+          }
+        }
+        return null;
+      }
+      if(u.hostname === 'raw.githubusercontent.com'){
+        var rparts = u.pathname.split('/').filter(Boolean);
+        if(rparts.length >= 3){
+          var rowner = rparts[0], rrepo = rparts[1], rbranch = rparts[2];
+          var rpathParts = rparts.slice(3);
+          var endsWithSlash = /\/$/.test(u.pathname);
+          var lastSeg = rpathParts.length ? rpathParts[rpathParts.length - 1] : '';
+          var hasExtension = /\.[a-z0-9]{1,6}$/i.test(lastSeg);
+          if(endsWithSlash || !hasExtension){
+            return { owner: rowner, repo: rrepo, branch: rbranch, path: rpathParts.join('/') };
+          }
+        }
+        return null;
+      }
+      return null;
+    }catch(e){ return null; }
+  }
+
+  async function fetchGithubFolder(owner, repo, branch, path){
+    var apiUrl = 'https://api.github.com/repos/' + owner + '/' + repo + '/contents/' + encodeApiPath(path) + (branch ? ('?ref=' + encodeURIComponent(branch)) : '');
+    var res = await fetch(apiUrl, { headers: { 'Accept': 'application/vnd.github.v3+json' } });
+    if(!res.ok){
+      if(res.status === 404) throw new Error('not-found');
+      throw new Error('HTTP ' + res.status);
+    }
+    var data = await res.json();
+    if(!Array.isArray(data)) throw new Error('not-a-folder');
+    // Folders first, then files, alphabetically within each group.
+    data.sort(function(a, b){
+      if(a.type !== b.type) return a.type === 'dir' ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+    return data;
+  }
+
+  async function openFolderBrowse(owner, repo, branch, path){
+    state.folderBrowseOpen = true;
+    state.folderBrowseBusy = true;
+    state.folderBrowseError = null;
+    state.folderBrowseOwner = owner;
+    state.folderBrowseRepo = repo;
+    state.folderBrowseBranch = branch;
+    state.folderBrowsePath = path || '';
+    state.folderBrowseEntries = null;
+    render();
+    try{
+      var entries = await fetchGithubFolder(owner, repo, branch, path || '');
+      state.folderBrowseEntries = entries;
+      state.folderBrowseBusy = false;
+      render();
+    }catch(err){
+      state.folderBrowseBusy = false;
+      state.folderBrowseError = (err && err.message === 'not-found') ? 'Walang nahanap na folder dito.' : 'Hindi ma-load ang folder listing.';
+      render();
+    }
+  }
+
+  function folderBrowseNavigateInto(entry){
+    if(entry.type !== 'dir') return;
+    openFolderBrowse(state.folderBrowseOwner, state.folderBrowseRepo, state.folderBrowseBranch, entry.path);
+  }
+
+  function folderBrowseGoUp(){
+    var parts = (state.folderBrowsePath || '').split('/').filter(Boolean);
+    parts.pop();
+    openFolderBrowse(state.folderBrowseOwner, state.folderBrowseRepo, state.folderBrowseBranch, parts.join('/'));
+  }
+
+  function closeFolderBrowse(){
+    state.folderBrowseOpen = false;
+    state.folderBrowseEntries = null;
+    state.folderBrowseError = null;
+    state.folderBrowseImportedPaths = {};
+    render();
+  }
+
+  async function importFolderFileEntry(entry){
+    try{
+      var result;
+      if(/\.(docx|pptx)$/i.test(entry.name)){
+        result = await importOfficeFileFromUrl(entry.download_url, state.currentFolder);
+      } else {
+        var res = await fetch(entry.download_url);
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        var text = await res.text();
+        var contentType = '';
+        try{ contentType = res.headers.get('content-type') || ''; }catch(e){}
+        result = await importContentAsSong(text, entry.download_url, contentType, state.currentFolder);
+      }
+      state.folderBrowseImportedPaths[entry.path] = true;
+      render();
+      showToast(result.kind === 'multi' ? ('\u2713 Na-import ang ' + result.count + ' kanta mula sa "' + entry.name + '"') : ('\u2713 Na-import na: "' + result.title + '"'));
+    }catch(err){
+      showToast('Hindi ma-import ang "' + entry.name + '"');
+    }
+  }
+
+  function openConfirmImportAllFolder(){
+    if(!state.folderBrowseEntries) return;
+    var pending = state.folderBrowseEntries.filter(function(e){ return e.type === 'file' && !state.folderBrowseImportedPaths[e.path]; });
+    if(!pending.length){ showToast('Wala nang natitirang kanta na i-i-import dito.'); return; }
+    state.folderBrowseConfirmAllOpen = true;
+    render();
+  }
+  function cancelConfirmImportAllFolder(){
+    state.folderBrowseConfirmAllOpen = false;
+    render();
+  }
+  function confirmImportAllFolder(){
+    state.folderBrowseConfirmAllOpen = false;
+    importAllInFolder();
+  }
+
+  async function importAllInFolder(){
+    if(!state.folderBrowseEntries) return;
+    state.folderBrowseImportingAll = true;
+    render();
+    var files = state.folderBrowseEntries.filter(function(e){ return e.type === 'file'; });
+    var totalAdded = 0;
+    for(var i=0;i<files.length;i++){
+      var entry = files[i];
+      if(state.folderBrowseImportedPaths[entry.path]) continue;
+      try{
+        var result;
+        if(/\.(docx|pptx)$/i.test(entry.name)){
+          result = await importOfficeFileFromUrl(entry.download_url, state.currentFolder);
+        } else {
+          var res = await fetch(entry.download_url);
+          if(!res.ok) continue;
+          var text = await res.text();
+          var contentType = '';
+          try{ contentType = res.headers.get('content-type') || ''; }catch(e){}
+          result = await importContentAsSong(text, entry.download_url, contentType, state.currentFolder);
+        }
+        state.folderBrowseImportedPaths[entry.path] = true;
+        totalAdded += (result.kind === 'multi' ? result.count : 1);
+      }catch(e){ /* skip file that failed, continue with the rest */ }
+    }
+    state.folderBrowseImportingAll = false;
+    render();
+    showToast('\u2713 Na-import ang ' + totalAdded + ' kanta mula sa folder!');
+    setTimeout(function(){
+      if(state.folderBrowseOpen) closeFolderBrowse();
+    }, 900);
   }
 
   async function handleImportFromUrl(){
@@ -861,41 +1225,61 @@
     if(!url){ state.urlImportError = 'Maglagay muna ng link.'; render(); focusUrlInput(); return; }
     if(!/^https?:\/\//i.test(url)){ state.urlImportError = 'Kailangan magsimula sa http:// o https://'; render(); focusUrlInput(); return; }
 
+    // If this looks like a link to a GitHub *folder* rather than a single file,
+    // open the folder browser (list + pick) instead of trying to fetch it directly.
+    var folderRef = parseGithubFolderUrl(url);
+    if(folderRef){
+      state.urlImportOpen = false;
+      state.urlImportBusy = false;
+      state.urlImportValue = '';
+      state.urlImportError = null;
+      openFolderBrowse(folderRef.owner, folderRef.repo, folderRef.branch, folderRef.path);
+      return;
+    }
+
     state.urlImportValue = url;
     state.urlImportBusy = true;
     state.urlImportError = null;
     render();
 
+    var isOfficeFile = /\.(docx|pptx)(\?|#|$)/i.test(url);
+
     try{
-      var res = await fetch(url);
-      if(!res.ok) throw new Error('HTTP ' + res.status);
-      var text = await res.text();
-      if(!text || !text.trim()) throw new Error('empty');
+      var result;
+      if(isOfficeFile){
+        result = await importOfficeFileFromUrl(url, state.currentFolder);
+      } else {
+        var res = await fetch(url);
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        var text = await res.text();
+        if(!text || !text.trim()) throw new Error('empty');
+        var contentType = '';
+        try{ contentType = (res.headers && res.headers.get) ? (res.headers.get('content-type') || '') : ''; }catch(e){}
+        result = await importContentAsSong(text, url, contentType, state.currentFolder);
+      }
 
-      var title = filenameFromUrl(url);
-      var targetFolder = state.currentFolder || 'Gig';
-      var song = { id: uid(), title: title, key: "C", bpm: "", folder: targetFolder, body: text.replace(/\s+$/, ''), sourceUrl: url };
-
-      state.songs.unshift(song);
-      state.activeId = song.id;
-      state.mode = 'view';
-      state.transposeSteps = 0;
+      if(result.kind === 'single'){ state.activeId = result.id; state.mode = 'view'; state.transposeSteps = 0; }
+      else if(result.firstId){ state.activeId = result.firstId; state.mode = 'view'; state.transposeSteps = 0; }
       state.sidebarView = 'folderSongs';
-      state.currentFolder = targetFolder;
-      await ensureFolder(targetFolder);
-      await persistSong(song);
-      await persistIndex(state.songs);
 
       state.urlImportOpen = false;
       state.urlImportBusy = false;
       state.urlImportValue = '';
       render();
-      showToast('Na-import mula sa link: "' + title + '"');
+      showToast(result.kind === 'multi' ? ('\u2713 Na-import ang ' + result.count + ' kanta mula sa link!') : ('\u2713 Na-import mula sa link: "' + result.title + '"'));
     }catch(err){
       state.urlImportBusy = false;
       var msg = 'Hindi ma-fetch ang link.';
       if(err && err.message === 'empty'){
         msg = 'Walang laman ang file sa link na ibinigay.';
+      } else if(err && err.message === 'invalid-json'){
+        msg = 'Mukhang JSON file ito pero hindi ito valid na setlist (walang "songs" list).';
+      } else if(err && err.message === 'jszip-missing'){
+        msg = 'Hindi pa handa ang Word/PowerPoint reader, subukan ulit pagkatapos ng ilang segundo.';
+      } else if(err && err.message === 'bad-office-file'){
+        msg = 'Hindi ma-basa ang Word file na ito, baka sira o hindi tunay na .docx.';
+      } else if(err && err.message === 'unsupported-office'){
+        msg = 'Hindi supported ang file type na ito.';
       } else if(err && /Failed to fetch|NetworkError|TypeError/i.test(err.message || '')){
         msg = 'Hindi ma-access ang link. Baka naka-block ng CORS ang website, private ang file, o walang internet.';
       } else if(err && err.message){
@@ -984,6 +1368,136 @@
     };
     reader.readAsText(file);
     e.target.value = '';
+  }
+
+  // ---- Share-a-folder-via-link ----
+  function b64EncodeUnicode(str){
+    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(_, p1){ return String.fromCharCode('0x' + p1); }));
+  }
+  function b64DecodeUnicode(str){
+    return decodeURIComponent(Array.prototype.map.call(atob(str), function(c){ return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2); }).join(''));
+  }
+
+  function parseSharedFromUrl(){
+    try{
+      var params = new URLSearchParams(window.location.search);
+      var raw = params.get('share');
+      if(!raw) return null;
+      var json = b64DecodeUnicode(raw);
+      var data = JSON.parse(json);
+      if(!data || !Array.isArray(data.songs) || !data.songs.length) return null;
+      return { folder: data.folder || 'Shared', songs: data.songs };
+    }catch(e){ return null; }
+  }
+
+  function buildShareUrlForFolder(folderName){
+    var songsToShare = folderName === null
+      ? state.songs
+      : state.songs.filter(function(s){ return (s.folder || 'Gig') === folderName; });
+    if(!songsToShare.length) return null;
+    var payload = {
+      folder: folderName || 'All Songs',
+      songs: songsToShare.map(function(s){ return { title: s.title, key: s.key, bpm: s.bpm, body: s.body }; })
+    };
+    var encoded = b64EncodeUnicode(JSON.stringify(payload));
+    var base = window.location.origin + window.location.pathname;
+    return base + '?share=' + encoded;
+  }
+
+  function openShareFolder(){
+    var url = buildShareUrlForFolder(state.currentFolder);
+    if(!url){ showToast('Walang kanta sa folder na ito.'); return; }
+    state.shareModalOpen = true;
+    state.shareModalUrl = url;
+    render();
+  }
+  function closeShareModal(){ state.shareModalOpen = false; render(); }
+  function copyShareLink(){
+    var input = document.getElementById('share-link-input');
+    if(!input) return;
+    input.focus();
+    input.select();
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(input.value).then(function(){ showToast('Nakopya ang link!'); }).catch(function(){
+          try{ document.execCommand('copy'); showToast('Nakopya ang link!'); }catch(e){ showToast('Hindi ma-copy, i-select at i-copy manually.'); }
+        });
+      } else {
+        document.execCommand('copy');
+        showToast('Nakopya ang link!');
+      }
+    }catch(e){ showToast('Hindi ma-copy, i-select at i-copy manually.'); }
+  }
+
+  function previewSharedSong(idx){
+    state.sharedPreviewIdx = state.sharedPreviewIdx === idx ? null : idx;
+    render();
+  }
+
+  async function importSharedSong(idx){
+    if(!state.sharedPreview) return;
+    var s = state.sharedPreview.songs[idx];
+    if(!s) return;
+    var targetFolder = state.sharedPreview.folder || 'Gig';
+    var song = { id: uid(), title: s.title || 'Untitled', key: s.key || 'C', bpm: s.bpm || '', folder: targetFolder, body: s.body || '' };
+    state.songs.push(song);
+    await ensureFolder(targetFolder);
+    await persistSong(song);
+    await persistIndex(state.songs);
+    state.sharedImportedIds[idx] = true;
+    render();
+    showToast('\u2713 Na-import na: ' + (s.title || 'Untitled'));
+  }
+
+  function openConfirmImportAllShared(){
+    if(!state.sharedPreview) return;
+    var pending = state.sharedPreview.songs.filter(function(s, i){ return !state.sharedImportedIds[i]; });
+    if(!pending.length){ showToast('Wala nang natitirang kanta na i-i-import.'); return; }
+    state.sharedConfirmAllOpen = true;
+    render();
+  }
+  function cancelConfirmImportAllShared(){
+    state.sharedConfirmAllOpen = false;
+    render();
+  }
+  function confirmImportAllShared(){
+    state.sharedConfirmAllOpen = false;
+    importAllShared();
+  }
+
+  async function importAllShared(){
+    if(!state.sharedPreview) return;
+    state.sharedImportingAll = true;
+    render();
+    var targetFolder = state.sharedPreview.folder || 'Gig';
+    await ensureFolder(targetFolder);
+    var count = 0;
+    for(var i=0;i<state.sharedPreview.songs.length;i++){
+      if(state.sharedImportedIds[i]) continue;
+      var s = state.sharedPreview.songs[i];
+      var song = { id: uid(), title: s.title || 'Untitled', key: s.key || 'C', bpm: s.bpm || '', folder: targetFolder, body: s.body || '' };
+      state.songs.push(song);
+      await persistSong(song);
+      state.sharedImportedIds[i] = true;
+      count++;
+    }
+    await persistIndex(state.songs);
+    state.sharedImportingAll = false;
+    render();
+    showToast('\u2713 Na-import ang ' + count + ' kanta!');
+    setTimeout(function(){
+      if(state.sharedModalOpen) closeSharedModal();
+    }, 900);
+  }
+
+  function closeSharedModal(){
+    state.sharedModalOpen = false;
+    try{
+      var url = new URL(window.location.href);
+      url.searchParams.delete('share');
+      window.history.replaceState({}, '', url.toString());
+    }catch(e){}
+    render();
   }
 
   function stopAutoScroll(){
@@ -1129,7 +1643,7 @@
       html += '  <div class="sidebar-foot"><button class="foot-btn" id="btn-backup-json">\u2B07 Backup JSON</button><button class="foot-btn" id="btn-restore-json">\u2B06 Restore JSON</button></div>';
     } else {
       var folderSongs = state.currentFolder ? state.songs.filter(function(s){ return (s.folder || 'Gig') === state.currentFolder; }) : state.songs;
-      html += '  <div class="folder-header"><button class="back-btn" id="btn-back-folders">\u2190</button><span class="fname">' + escapeHtml(state.currentFolder || 'All Songs') + '</span><span class="fcount">' + folderSongs.length + '</span><button class="new-btn" id="btn-new" title="New song">+</button></div>';
+      html += '  <div class="folder-header"><button class="back-btn" id="btn-back-folders">\u2190</button><span class="fname">' + escapeHtml(state.currentFolder || 'All Songs') + '</span><span class="fcount">' + folderSongs.length + '</span><button class="new-btn" id="btn-share-folder" title="Share link ng folder" style="background:var(--teal);color:#0f1f1e;">\uD83D\uDD17</button><button class="new-btn" id="btn-new" title="New song">+</button></div>';
       html += '  <div class="song-list">';
       if(folderSongs.length === 0){
         html += '<div class="empty-hint">Wala pang kanta dito. Pindutin ang + para gumawa, o mag-import ng file sa ibaba.</div>';
@@ -1257,7 +1771,7 @@
 
     if(state.urlImportOpen){
       html += '<div class="confirm-overlay" id="urlimport-overlay"><div class="confirm-box" style="max-width:360px;">';
-      html += '<p style="text-align:left;">Idikit ang link ng .txt/.cho na file (hal. mula sa sarili mong website, Dropbox direct link, o GitHub raw link).</p>';
+      html += '<p style="text-align:left;">Idikit ang link ng file: <b>.json</b> (buong setlist) o <b>.txt/.cho/.html/.docx/.pptx</b> (isang kanta) \u2014 o idikit ang link ng buong <b>GitHub folder</b> (hal. .../tree/main/choir) para makita muna ang listahan at pumili ka kung ano ang i-import.</p>';
       html += '<input id="url-import-input" type="url" placeholder="https://example.com/song1.txt" value="' + escapeHtml(state.urlImportValue || '') + '" style="width:100%;background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:9px 10px;font-size:13px;margin-bottom:10px;box-sizing:border-box;" />';
       if(state.urlImportError) html += '<p style="color:var(--danger);font-size:12px;text-align:left;margin:-4px 0 10px;">' + escapeHtml(state.urlImportError) + '</p>';
       html += '<div class="confirm-row"><button id="btn-cancel-urlimport">Cancel</button><button class="danger-btn" style="background:var(--gold);border-color:var(--gold);color:#181410;" id="btn-confirm-urlimport" ' + (state.urlImportBusy ? 'disabled' : '') + '>' + (state.urlImportBusy ? 'Kinukuha\u2026' : 'I-import') + '</button></div>';
@@ -1270,6 +1784,96 @@
       html += '<div class="countdown-number" id="countdown-number">' + state.countdownRemaining + '</div>';
       html += '<button class="close-btn" id="btn-cancel-countdown">Cancel</button>';
       html += '</div>';
+    }
+
+    if(state.shareModalOpen){
+      html += '<div class="confirm-overlay" id="share-overlay"><div class="confirm-box" style="max-width:400px;">';
+      html += '<p style="text-align:left;">Link para sa folder na "' + escapeHtml(state.currentFolder || 'All Songs') + '". Ibahagi ito sa mga bandmate mo \u2014 pag binuksan nila, makikita nila ang listahan at pwede nilang piliin o i-import lahat.</p>';
+      html += '<input id="share-link-input" class="share-link-input" readonly value="' + escapeHtml(state.shareModalUrl || '') + '" onclick="this.select()" />';
+      html += '<p style="color:var(--muted);font-size:11px;text-align:left;margin:-4px 0 10px;">Tip: mas maigsi at mas madaling i-share kung konti lang ang kanta sa folder.</p>';
+      html += '<div class="confirm-row"><button id="btn-share-close">Isara</button><button class="danger-btn" style="background:var(--gold);border-color:var(--gold);color:#181410;" id="btn-share-copy">\uD83D\uDCCB Kopyahin</button></div>';
+      html += '</div></div>';
+    }
+
+    if(state.sharedModalOpen && state.sharedPreview){
+      var sp = state.sharedPreview;
+      html += '<div class="confirm-overlay" id="shared-overlay"><div class="shared-modal">';
+      html += '<h3>\uD83C\uDFB5 ' + escapeHtml(sp.folder) + '</h3>';
+      html += '<p class="shared-sub">May ' + sp.songs.length + ' kantang ibinahagi sa\'yo. Pindutin ang pamagat para tingnan, o "+ Import" para idagdag sa sarili mong setlist.</p>';
+      html += '<div class="shared-list">';
+      sp.songs.forEach(function(s, i){
+        var imported = !!state.sharedImportedIds[i];
+        html += '<div class="shared-item">';
+        html += '<div class="shared-item-row">';
+        html += '<button class="shared-item-title" data-preview="' + i + '">' + escapeHtml(s.title || 'Untitled') + '<span class="k"> \u00b7 Key ' + escapeHtml(s.key || '\u2014') + '</span></button>';
+        html += '<button class="foot-btn shared-import-btn" data-import="' + i + '" ' + (imported ? 'disabled' : '') + '>' + (imported ? '\u2713' : '+ Import') + '</button>';
+        html += '</div>';
+        if(state.sharedPreviewIdx === i){
+          html += '<div class="shared-song-preview"><div class="chart" style="font-size:13px;">' + renderChartHtml(s.body || '') + '</div></div>';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+      html += '<div class="confirm-row" style="margin-top:14px;">';
+      html += '<button id="btn-shared-close">Isara</button>';
+      html += '<button class="danger-btn" style="background:var(--gold);border-color:var(--gold);color:#181410;" id="btn-shared-importall" ' + (state.sharedImportingAll ? 'disabled' : '') + '>' + (state.sharedImportingAll ? 'Ini-import\u2026' : 'I-import Lahat') + '</button>';
+      html += '</div>';
+      html += '</div></div>';
+    }
+
+    if(state.folderBrowseOpen){
+      html += '<div class="confirm-overlay" id="folderbrowse-overlay"><div class="shared-modal">';
+      html += '<h3>\uD83D\uDCC1 ' + escapeHtml(state.folderBrowseRepo || 'Folder') + '</h3>';
+      html += '<p class="folder-browse-path">/' + escapeHtml(state.folderBrowsePath || '') + '</p>';
+      if(state.folderBrowseBusy){
+        html += '<p class="shared-sub">Kinukuha ang listahan\u2026</p>';
+      } else if(state.folderBrowseError){
+        html += '<p class="shared-sub" style="color:var(--danger);">' + escapeHtml(state.folderBrowseError) + '</p>';
+      } else if(state.folderBrowseEntries){
+        if(state.folderBrowsePath){
+          html += '<div class="fb-up-row"><button class="foot-btn" id="btn-fb-up" style="flex:none;width:auto;padding:6px 12px;">\u2191 Balik</button></div>';
+        }
+        var dirs = state.folderBrowseEntries.filter(function(e){ return e.type === 'dir'; });
+        var files = state.folderBrowseEntries.filter(function(e){ return e.type === 'file'; });
+        if(dirs.length === 0 && files.length === 0){
+          html += '<p class="shared-sub">Walang laman ang folder na ito.</p>';
+        } else {
+          html += '<div class="folder-browse-list">';
+          dirs.forEach(function(d){
+            html += '<div class="fb-entry"><span class="fb-ico">\uD83D\uDCC1</span><button class="fb-name" data-navdir="' + escapeHtml(d.path) + '">' + escapeHtml(d.name) + '</button></div>';
+          });
+          files.forEach(function(f){
+            var imported = !!state.folderBrowseImportedPaths[f.path];
+            var isJson = /\.json$/i.test(f.name);
+            var isDocx = /\.docx$/i.test(f.name);
+            var isPptx = /\.pptx$/i.test(f.name);
+            var ico = isJson ? '\uD83D\uDCE6' : (isDocx ? '\uD83D\uDCC4' : (isPptx ? '\uD83D\uDCCA' : '\uD83C\uDFB5'));
+            html += '<div class="fb-entry"><span class="fb-ico">' + ico + '</span><span class="fb-name" style="cursor:default;">' + escapeHtml(f.name) + (isJson ? ' <span style="color:var(--teal);font-size:10px;">(maramihan)</span>' : '') + '</span><button class="foot-btn fb-import-btn" data-importfile="' + escapeHtml(f.path) + '" ' + (imported ? 'disabled' : '') + ' style="flex:none;width:auto;padding:6px 10px;">' + (imported ? '\u2713' : '+ Import') + '</button></div>';
+          });
+          html += '</div>';
+        }
+      }
+      html += '<div class="confirm-row" style="margin-top:14px;">';
+      html += '<button id="btn-fb-close">Isara</button>';
+      html += '<button class="danger-btn" style="background:var(--gold);border-color:var(--gold);color:#181410;" id="btn-fb-importall" ' + (state.folderBrowseImportingAll || state.folderBrowseBusy ? 'disabled' : '') + '>' + (state.folderBrowseImportingAll ? 'Ini-import\u2026' : 'I-import Lahat Dito') + '</button>';
+      html += '</div>';
+      html += '</div></div>';
+    }
+
+    if(state.sharedConfirmAllOpen){
+      var sharedPendingCount = state.sharedPreview ? state.sharedPreview.songs.filter(function(s, i){ return !state.sharedImportedIds[i]; }).length : 0;
+      html += '<div class="confirm-overlay" id="shared-confirmall-overlay"><div class="confirm-box">';
+      html += '<p>I-import ang <b>' + sharedPendingCount + ' kanta</b> mula sa shared na listahan na ito? Kung may na-import ka na dati mula rito, baka ma-doble ito.</p>';
+      html += '<div class="confirm-row"><button id="btn-shared-confirmall-cancel">Cancel</button><button class="danger-btn" style="background:var(--gold);border-color:var(--gold);color:#181410;" id="btn-shared-confirmall-yes">Oo, i-import lahat</button></div>';
+      html += '</div></div>';
+    }
+
+    if(state.folderBrowseConfirmAllOpen){
+      var pendingCount = state.folderBrowseEntries ? state.folderBrowseEntries.filter(function(e){ return e.type === 'file' && !state.folderBrowseImportedPaths[e.path]; }).length : 0;
+      html += '<div class="confirm-overlay" id="fb-confirmall-overlay"><div class="confirm-box">';
+      html += '<p>I-import ang <b>' + pendingCount + ' kanta</b> mula sa folder na ito? Kung may na-import ka na dati mula rito, baka ma-doble ito.</p>';
+      html += '<div class="confirm-row"><button id="btn-fb-confirmall-cancel">Cancel</button><button class="danger-btn" style="background:var(--gold);border-color:var(--gold);color:#181410;" id="btn-fb-confirmall-yes">Oo, i-import lahat</button></div>';
+      html += '</div></div>';
     }
 
     root.innerHTML = html;
@@ -1449,6 +2053,52 @@
       if(state.mode === 'edit') focusTitleInput();
     };
 
+    if(byId('btn-share-folder')) byId('btn-share-folder').onclick = openShareFolder;
+    if(byId('btn-share-close')) byId('btn-share-close').onclick = closeShareModal;
+    if(byId('btn-share-copy')) byId('btn-share-copy').onclick = copyShareLink;
+    if(byId('share-overlay')) byId('share-overlay').onclick = function(e){ if(e.target.id === 'share-overlay') closeShareModal(); };
+
+    if(byId('btn-shared-close')) byId('btn-shared-close').onclick = closeSharedModal;
+    if(byId('btn-shared-importall')) byId('btn-shared-importall').onclick = openConfirmImportAllShared;
+    if(byId('shared-overlay')) byId('shared-overlay').onclick = function(e){ if(e.target.id === 'shared-overlay') closeSharedModal(); };
+    var sharedImportBtns = document.querySelectorAll('.shared-import-btn');
+    sharedImportBtns.forEach(function(btn){
+      btn.onclick = function(){ importSharedSong(parseInt(this.getAttribute('data-import'), 10)); };
+    });
+    var sharedTitleBtns = document.querySelectorAll('.shared-item-title');
+    sharedTitleBtns.forEach(function(btn){
+      btn.onclick = function(){ previewSharedSong(parseInt(this.getAttribute('data-preview'), 10)); };
+    });
+
+    if(byId('btn-fb-close')) byId('btn-fb-close').onclick = closeFolderBrowse;
+    if(byId('btn-fb-up')) byId('btn-fb-up').onclick = folderBrowseGoUp;
+    if(byId('btn-fb-importall')) byId('btn-fb-importall').onclick = openConfirmImportAllFolder;
+    if(byId('folderbrowse-overlay')) byId('folderbrowse-overlay').onclick = function(e){ if(e.target.id === 'folderbrowse-overlay') closeFolderBrowse(); };
+
+    if(byId('btn-fb-confirmall-cancel')) byId('btn-fb-confirmall-cancel').onclick = cancelConfirmImportAllFolder;
+    if(byId('btn-fb-confirmall-yes')) byId('btn-fb-confirmall-yes').onclick = confirmImportAllFolder;
+    if(byId('fb-confirmall-overlay')) byId('fb-confirmall-overlay').onclick = function(e){ if(e.target.id === 'fb-confirmall-overlay') cancelConfirmImportAllFolder(); };
+
+    if(byId('btn-shared-confirmall-cancel')) byId('btn-shared-confirmall-cancel').onclick = cancelConfirmImportAllShared;
+    if(byId('btn-shared-confirmall-yes')) byId('btn-shared-confirmall-yes').onclick = confirmImportAllShared;
+    if(byId('shared-confirmall-overlay')) byId('shared-confirmall-overlay').onclick = function(e){ if(e.target.id === 'shared-confirmall-overlay') cancelConfirmImportAllShared(); };
+    var fbNavBtns = document.querySelectorAll('[data-navdir]');
+    fbNavBtns.forEach(function(btn){
+      btn.onclick = function(){
+        var path = this.getAttribute('data-navdir');
+        var entry = state.folderBrowseEntries.filter(function(e){ return e.path === path; })[0];
+        if(entry) folderBrowseNavigateInto(entry);
+      };
+    });
+    var fbImportBtns = document.querySelectorAll('.fb-import-btn');
+    fbImportBtns.forEach(function(btn){
+      btn.onclick = function(){
+        var path = this.getAttribute('data-importfile');
+        var entry = state.folderBrowseEntries.filter(function(e){ return e.path === path; })[0];
+        if(entry) importFolderFileEntry(entry);
+      };
+    });
+
     if(byId('btn-export')) byId('btn-export').onclick = handleExport;
     if(byId('btn-delete')) byId('btn-delete').onclick = function(){ state.confirmDelete = state.activeId; render(); };
     if(byId('btn-cancel-delete')) byId('btn-cancel-delete').onclick = function(){ state.confirmDelete = null; render(); };
@@ -1537,6 +2187,12 @@
       render();
     }
   });
+
+  var _sharedFromUrl = parseSharedFromUrl();
+  if(_sharedFromUrl){
+    state.sharedPreview = _sharedFromUrl;
+    state.sharedModalOpen = true;
+  }
 
   loadSongs();
 
