@@ -835,28 +835,64 @@
     showToast(moved > 0 ? ('Tinanggal ang folder. ' + moved + ' kanta inilipat sa "Gig"') : 'Tinanggal ang folder');
   }
 
-  function handleImportFile(e){
+  async function handleImportFile(e){
     var file = e.target.files[0];
     if(!file) return;
-    var reader = new FileReader();
-    reader.onload = async function(ev){
-      var text = ev.target.result;
-      var title = file.name.replace(/\.(txt|cho|chopro|crd)$/i, '');
-      var targetFolder = state.currentFolder || 'Gig';
-      var song = { id: uid(), title: title, key: "C", bpm: "", folder: targetFolder, body: text.replace(/\s+$/,'') };
-      state.songs.unshift(song);
-      state.activeId = song.id;
-      state.mode = 'view';
-      state.transposeSteps = 0;
-      state.sidebarView = 'folderSongs';
-      state.currentFolder = targetFolder;
-      await ensureFolder(targetFolder);
-      await persistSong(song);
-      await persistIndex(state.songs);
-      render();
-      showToast('Imported "' + title + '"');
-    };
-    reader.readAsText(file);
+    var name = file.name || '';
+    var targetFolder = state.currentFolder || 'Gig';
+
+    try{
+      if(/\.json$/i.test(name)){
+        var jsonText = await file.text();
+        var jsonResult = await importContentAsSong(jsonText, name, 'application/json', state.currentFolder);
+        if(jsonResult.kind === 'multi' && jsonResult.firstId){
+          state.activeId = jsonResult.firstId; state.mode = 'view'; state.transposeSteps = 0;
+        }
+        state.sidebarView = 'folderSongs';
+        state.currentFolder = targetFolder;
+        render();
+        showToast('\u2713 Na-import ang ' + jsonResult.count + ' kanta mula sa JSON');
+      } else if(/\.(docx|pptx)$/i.test(name)){
+        var buf = await file.arrayBuffer();
+        var parsed = await parseOfficeBuffer(buf, name);
+        var officeTitle = parsed.title || name.replace(/\.(docx|pptx)$/i, '');
+        var officeResult = await addSingleSongToApp(officeTitle, parsed.text, null, state.currentFolder);
+        state.activeId = officeResult.id; state.mode = 'view'; state.transposeSteps = 0;
+        state.sidebarView = 'folderSongs';
+        state.currentFolder = targetFolder;
+        render();
+        showToast('\u2713 Na-import na: "' + officeTitle + '"');
+      } else if(/\.html?$/i.test(name)){
+        var htmlText = await file.text();
+        var extracted = extractTextFromHtml(htmlText);
+        var htmlTitle = extracted.title || name.replace(/\.html?$/i, '');
+        if(!extracted.text || !extracted.text.trim()) throw new Error('empty');
+        var htmlResult = await addSingleSongToApp(htmlTitle, extracted.text, null, state.currentFolder);
+        state.activeId = htmlResult.id; state.mode = 'view'; state.transposeSteps = 0;
+        state.sidebarView = 'folderSongs';
+        state.currentFolder = targetFolder;
+        render();
+        showToast('\u2713 Na-import na: "' + htmlTitle + '"');
+      } else {
+        // Plain text / chord-sheet fallback: .txt, .cho, .chopro, .crd, or unknown.
+        var text = await file.text();
+        var title = name.replace(/\.(txt|cho|chopro|crd)$/i, '');
+        var result = await addSingleSongToApp(title, text, null, state.currentFolder);
+        state.activeId = result.id; state.mode = 'view'; state.transposeSteps = 0;
+        state.sidebarView = 'folderSongs';
+        state.currentFolder = targetFolder;
+        render();
+        showToast('\u2713 Na-import na: "' + title + '"');
+      }
+    }catch(err){
+      var msg = 'Hindi ma-import ang file.';
+      if(err && err.message === 'jszip-missing') msg = 'Hindi pa handa ang Word/PowerPoint reader, subukan ulit pagkatapos ng ilang segundo.';
+      else if(err && err.message === 'bad-office-file') msg = 'Hindi ma-basa ang Word file na ito, baka sira o hindi tunay na .docx.';
+      else if(err && err.message === 'unsupported-office') msg = 'Hindi supported ang file type na ito.';
+      else if(err && err.message === 'empty') msg = 'Walang laman ang file na ito.';
+      else if(err && err.message === 'invalid-json') msg = 'Hindi valid na JSON setlist ang file na ito.';
+      showToast(msg);
+    }
     e.target.value = '';
   }
 
@@ -1002,16 +1038,16 @@
     return s;
   }
 
-  async function importOfficeFileFromUrl(url, targetFolderOverride){
+  // Core parser: given raw bytes + a filename/URL (used only to tell docx vs
+  // pptx apart), returns { text, title }. Works the same whether the bytes
+  // came from fetch() or from a local file picker.
+  async function parseOfficeBuffer(buf, nameOrUrl){
     if(typeof window.JSZip === 'undefined'){
       throw new Error('jszip-missing');
     }
-    var res = await fetch(url);
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    var buf = await res.arrayBuffer();
     var zip = await window.JSZip.loadAsync(buf);
-    var isDocx = /\.docx(\?|#|$)/i.test(url);
-    var isPptx = /\.pptx(\?|#|$)/i.test(url);
+    var isDocx = /\.docx(\?|#|$)/i.test(nameOrUrl);
+    var isPptx = /\.pptx(\?|#|$)/i.test(nameOrUrl);
     var text = '';
     var title = null;
 
@@ -1045,8 +1081,16 @@
     }
 
     if(!text || !text.trim()) throw new Error('empty');
-    if(!title) title = filenameFromUrl(url);
-    return addSingleSongToApp(title, text, url, targetFolderOverride);
+    return { text: text, title: title };
+  }
+
+  async function importOfficeFileFromUrl(url, targetFolderOverride){
+    var res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    var buf = await res.arrayBuffer();
+    var parsed = await parseOfficeBuffer(buf, url);
+    var title = parsed.title || filenameFromUrl(url);
+    return addSingleSongToApp(title, parsed.text, url, targetFolderOverride);
   }
 
   // ---- GitHub "browse a folder, pick what to import" ----
@@ -1660,7 +1704,7 @@
       html += '  <div class="sidebar-foot"><button class="foot-btn" id="btn-import-side">Import</button><button class="foot-btn" id="btn-import-url-side">\uD83D\uDD17 URL</button>' + (state.sidebarOpen ? '<button class="foot-btn" id="btn-close-side">Close</button>' : '') + '</div>';
       html += '  <div class="sidebar-foot"><button class="foot-btn" id="btn-backup-json">\u2B07 Backup JSON</button><button class="foot-btn" id="btn-restore-json">\u2B06 Restore JSON</button></div>';
     }
-    html += '  <input id="file-input" type="file" accept=".txt,.cho,.chopro,.crd,text/plain" class="file-input" />';
+    html += '  <input id="file-input" type="file" accept=".txt,.cho,.chopro,.crd,.html,.htm,.json,.docx,.pptx,text/plain,application/json" class="file-input" />';
     html += '  <input id="file-input-json" type="file" accept=".json,application/json" class="file-input" />';
     html += '</div>';
 
