@@ -91,6 +91,14 @@
   .rename-folder-input{ flex:1; min-width:0; background:var(--surface-2); border:1px solid var(--gold-dim); color:var(--text); border-radius:5px; padding:6px 8px; font-size:13px; }
   .rename-folder-input:focus{ outline:none; border-color: var(--gold); }
 
+  .search-row{ position:relative; padding: 8px 12px 6px; }
+  .search-row input[type="search"]{ width:100%; background:var(--surface-2); border:1px solid var(--line); color:var(--text); border-radius:7px; padding:8px 30px 8px 10px; font-size:13px; }
+  .search-row input[type="search"]::-webkit-search-cancel-button{ display:none; }
+  .search-row input[type="search"]:focus{ outline:none; border-color:var(--gold-dim); }
+  .search-row input[type="search"]::placeholder{ color:var(--muted); }
+  .search-clear{ position:absolute; right:18px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--muted); font-size:13px; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+  .search-clear:hover{ color:var(--gold); background:rgba(232,163,61,0.12); }
+
   .folder-header{ display:flex; align-items:center; gap:8px; padding: 12px 12px 8px; }
   .back-btn{ background:var(--surface-2); border:1px solid var(--line); color:var(--text); width:28px; height:28px; border-radius:6px; font-size:14px; display:flex; align-items:center; justify-content:center; }
   .back-btn:hover{ border-color:var(--gold-dim); color:var(--gold); }
@@ -498,6 +506,7 @@
     songs: null,
     folderList: ['Gig', 'Choir'],
     sidebarView: 'folders', // 'folders' | 'folderSongs'
+    searchQuery: '',
     currentFolder: null,
     addingFolder: false,
     activeId: null,
@@ -739,10 +748,169 @@
     render();
   }
 
+  // Used when a song is tapped from the cross-folder search results shown at
+  // the folders root — lands the sidebar inside that song's folder so the
+  // view stays coherent if the search box is cleared afterwards.
+  function selectSongFromSearch(id, folder){
+    state.currentFolder = folder;
+    state.sidebarView = 'folderSongs';
+    selectSong(id);
+  }
+
   function backToFolders(){
     state.sidebarView = 'folders';
     state.addingFolder = false;
     render();
+  }
+
+  // ---- Sidebar search (All Songs + Folders) ----
+  function buildSearchRowHtml(){
+    var q = state.searchQuery || '';
+    var html = '  <div class="search-row"><input type="search" id="sidebar-search" placeholder="\uD83D\uDD0D Maghanap ng kanta o folder..." value="' + escapeHtml(q) + '" autocomplete="off" />';
+    if(q) html += '<button class="search-clear" id="btn-search-clear" title="I-clear">\u2715</button>';
+    html += '</div>';
+    return html;
+  }
+
+  function buildSidebarListHtml(){
+    var q = (state.searchQuery || '').trim().toLowerCase();
+    var html = '';
+    if(state.sidebarView === 'folders'){
+      if(q){
+        var matches = state.songs.filter(function(s){
+          return (s.title || '').toLowerCase().indexOf(q) !== -1 ||
+                 (s.key || '').toLowerCase().indexOf(q) !== -1 ||
+                 (s.folder || 'Gig').toLowerCase().indexOf(q) !== -1;
+        });
+        if(matches.length === 0){
+          html += '<div class="empty-hint">Walang nahanap na kantang tugma sa \u201c' + escapeHtml(state.searchQuery.trim()) + '\u201d.</div>';
+        } else {
+          for(var i=0;i<matches.length;i++){
+            var s = matches[i];
+            html += '<div class="song-item' + (s.id === state.activeId ? ' active' : '') + '" data-id="' + s.id + '" data-search-folder="' + escapeHtml(s.folder || 'Gig') + '">';
+            html += '  <span class="t">' + escapeHtml(s.title || 'Untitled') + '</span>';
+            html += '  <span class="k">Key ' + escapeHtml(s.key || '\u2014') + ' \u00b7 \uD83D\uDCC1 ' + escapeHtml(s.folder || 'Gig') + '</span>';
+            html += '</div>';
+          }
+        }
+        return html;
+      }
+      var folders = getFolders();
+      var totalCount = state.songs.length;
+      html += '    <div class="folder-card all" data-folder="__all__"><span class="ico">\uD83C\uDFB5</span><div class="info"><span class="name">All Songs</span><span class="count">' + totalCount + ' song' + (totalCount===1?'':'s') + '</span></div></div>';
+      folders.forEach(function(f){
+        var count = state.songs.filter(function(s){ return (s.folder || 'Gig') === f; }).length;
+        if(state.renamingFolder === f){
+          html += '    <div class="folder-card renaming" data-folder="' + escapeHtml(f) + '"><span class="ico">\uD83D\uDCC1</span><input id="rename-folder-input" class="rename-folder-input" value="' + escapeHtml(f) + '" maxlength="40" /><div class="folder-actions"><button class="folder-action-btn" data-rename-confirm="' + escapeHtml(f) + '" title="Save">\u2713</button><button class="folder-action-btn" data-rename-cancel="1" title="Cancel">\u2715</button></div></div>';
+        } else {
+          html += '    <div class="folder-card" data-folder="' + escapeHtml(f) + '"><span class="ico">\uD83D\uDCC1</span><div class="info"><span class="name">' + escapeHtml(f) + '</span><span class="count">' + count + ' song' + (count===1?'':'s') + '</span></div><div class="folder-actions"><button class="folder-action-btn" data-rename="' + escapeHtml(f) + '" title="Rename">\u270E</button><button class="folder-action-btn danger" data-delfolder="' + escapeHtml(f) + '" title="Delete">\uD83D\uDDD1\uFE0F</button></div></div>';
+        }
+      });
+      return html;
+    }
+
+    var folderSongs = state.currentFolder ? state.songs.filter(function(s){ return (s.folder || 'Gig') === state.currentFolder; }) : state.songs;
+    if(q){
+      folderSongs = folderSongs.filter(function(s){
+        return (s.title || '').toLowerCase().indexOf(q) !== -1 || (s.key || '').toLowerCase().indexOf(q) !== -1;
+      });
+    }
+    if(folderSongs.length === 0){
+      html += '<div class="empty-hint">' + (q ? 'Walang nahanap na kantang tugma sa \u201c' + escapeHtml(state.searchQuery.trim()) + '\u201d.' : 'Wala pang kanta dito. Pindutin ang + para gumawa, o mag-import ng file sa ibaba.') + '</div>';
+    } else {
+      for(var j=0;j<folderSongs.length;j++){
+        var s2 = folderSongs[j];
+        html += '<div class="song-item' + (s2.id === state.activeId ? ' active' : '') + '" data-id="' + s2.id + '">';
+        html += '  <span class="t">' + escapeHtml(s2.title || 'Untitled') + '</span>';
+        html += '  <span class="k">Key ' + escapeHtml(s2.key || '\u2014') + (s2.bpm ? ' \u00b7 ' + escapeHtml(s2.bpm) + ' bpm' : '') + '</span>';
+        html += '</div>';
+      }
+    }
+    return html;
+  }
+
+  // Rebuilds just the #sidebar-list contents (and the search box's clear
+  // button + the folder header's song count) so typing in the search input
+  // never re-renders the input itself and never loses focus/cursor position.
+  function refreshSidebarList(){
+    var listEl = document.getElementById('sidebar-list');
+    if(!listEl) return;
+    listEl.innerHTML = buildSidebarListHtml();
+    bindSidebarListHandlers();
+
+    var searchRow = document.querySelector('.search-row');
+    if(searchRow){
+      var existingClear = document.getElementById('btn-search-clear');
+      var shouldHaveClear = !!(state.searchQuery && state.searchQuery.length);
+      if(shouldHaveClear && !existingClear){
+        var btn = document.createElement('button');
+        btn.className = 'search-clear'; btn.id = 'btn-search-clear'; btn.title = 'I-clear'; btn.textContent = '\u2715';
+        btn.onclick = function(){ state.searchQuery = ''; render(); var si = document.getElementById('sidebar-search'); if(si) si.focus(); };
+        searchRow.appendChild(btn);
+      } else if(!shouldHaveClear && existingClear){
+        existingClear.remove();
+      }
+    }
+
+    if(state.sidebarView === 'folderSongs'){
+      var fcountEl = document.querySelector('.folder-header .fcount');
+      if(fcountEl){
+        var q = (state.searchQuery || '').trim().toLowerCase();
+        var all = state.currentFolder ? state.songs.filter(function(s){ return (s.folder||'Gig')===state.currentFolder; }) : state.songs;
+        var shown = q ? all.filter(function(s){ return (s.title||'').toLowerCase().indexOf(q)!==-1 || (s.key||'').toLowerCase().indexOf(q)!==-1; }) : all;
+        fcountEl.textContent = shown.length;
+      }
+    }
+  }
+
+  // Click handlers for elements inside #sidebar-list — split out from
+  // attachHandlers() so refreshSidebarList() can rebind after a soft update.
+  function bindSidebarListHandlers(){
+    var byId = function(id){ return document.getElementById(id); };
+
+    var folderCards = document.querySelectorAll('.folder-card');
+    folderCards.forEach(function(el){
+      if(el.classList.contains('renaming')) return;
+      el.onclick = function(){ openFolder(el.getAttribute('data-folder')); };
+    });
+
+    var renameBtns = document.querySelectorAll('[data-rename]');
+    renameBtns.forEach(function(btn){
+      btn.onclick = function(e){ e.stopPropagation(); startRenameFolder(btn.getAttribute('data-rename')); };
+    });
+    var delFolderBtns = document.querySelectorAll('[data-delfolder]');
+    delFolderBtns.forEach(function(btn){
+      btn.onclick = function(e){ e.stopPropagation(); requestDeleteFolder(btn.getAttribute('data-delfolder')); };
+    });
+    var renameConfirmBtns = document.querySelectorAll('[data-rename-confirm]');
+    renameConfirmBtns.forEach(function(btn){
+      btn.onclick = function(e){
+        e.stopPropagation();
+        var inp = byId('rename-folder-input');
+        renameFolder(btn.getAttribute('data-rename-confirm'), inp ? inp.value : '');
+      };
+    });
+    var renameCancelBtns = document.querySelectorAll('[data-rename-cancel]');
+    renameCancelBtns.forEach(function(btn){
+      btn.onclick = function(e){ e.stopPropagation(); cancelRenameFolder(); };
+    });
+    var renameFolderInput = byId('rename-folder-input');
+    if(renameFolderInput){
+      renameFolderInput.onclick = function(e){ e.stopPropagation(); };
+      renameFolderInput.onkeydown = function(e){
+        if(e.key === 'Enter'){ e.preventDefault(); renameFolder(state.renamingFolder, renameFolderInput.value); }
+        if(e.key === 'Escape'){ cancelRenameFolder(); }
+      };
+    }
+
+    var items = document.querySelectorAll('.song-item');
+    items.forEach(function(el){
+      el.onclick = function(){
+        var sf = el.getAttribute('data-search-folder');
+        if(sf) selectSongFromSearch(el.getAttribute('data-id'), sf);
+        else selectSong(el.getAttribute('data-id'));
+      };
+    });
   }
 
   async function confirmAddFolder(){
@@ -1648,8 +1816,84 @@
     }, 30);
   }
 
+  // ---- Mobile/PWA back-button handling ----
+  // Without this, an installed PWA (or in-app webview) has no browser history
+  // of its own, so the very first hardware "back" press closes the whole app
+  // no matter where the user is in the UI. We push one history entry per
+  // "level" the user is nested into (a folder opened, edit mode, a modal, the
+  // mobile sidebar overlay) and pop the matching UI state back off on
+  // popstate, so back only exits the app once you're already at the root.
+  var _navLevel = 0;
+  var _navReady = false;
+  var _inPopstate = false;
+
+  function hasOverlayOpen(){
+    return !!(state.chordModal || state.confirmDelete || state.confirmDeleteFolder ||
+      state.urlImportOpen || state.sharedModalOpen || state.shareModalOpen ||
+      state.folderBrowseOpen || state.editorNewFolder || state.renamingFolder || state.addingFolder);
+  }
+
+  function computeNavLevel(){
+    var c = hasOverlayOpen() ? 1 : 0;
+    var d = state.sidebarOpen ? 1 : 0;
+    var b = state.mode === 'edit' ? 1 : 0;
+    var a = state.sidebarView === 'folderSongs' ? 1 : 0;
+    return c + d + b + a;
+  }
+
+  // Closes exactly one "level", in the same priority used by computeNavLevel()
+  // (overlay > mobile sidebar > edit mode > folder view), so a single back
+  // press always undoes a single visible change.
+  function closeTopOverlay(){
+    if(state.chordModal){ state.chordModal = null; return; }
+    if(state.confirmDelete){ state.confirmDelete = null; return; }
+    if(state.confirmDeleteFolder){ state.confirmDeleteFolder = null; return; }
+    if(state.urlImportOpen){ state.urlImportOpen = false; state.urlImportBusy = false; state.urlImportError = null; return; }
+    if(state.sharedModalOpen){ state.sharedModalOpen = false; return; }
+    if(state.shareModalOpen){ state.shareModalOpen = false; return; }
+    if(state.folderBrowseOpen){ state.folderBrowseOpen = false; return; }
+    if(state.editorNewFolder){ state.editorNewFolder = false; return; }
+    if(state.renamingFolder){ state.renamingFolder = null; return; }
+    if(state.addingFolder){ state.addingFolder = false; return; }
+    if(state.sidebarOpen){ state.sidebarOpen = false; return; }
+    if(state.mode === 'edit'){ state.mode = 'view'; return; }
+    if(state.sidebarView === 'folderSongs'){ state.sidebarView = 'folders'; return; }
+  }
+
+  function syncNavHistory(){
+    var newLevel = computeNavLevel();
+    if(!_navReady){
+      _navLevel = newLevel;
+      _navReady = true;
+      try{ history.replaceState({ gsh: newLevel }, ''); }catch(e){}
+      return;
+    }
+    if(_inPopstate){ _navLevel = newLevel; return; }
+    var diff = newLevel - _navLevel;
+    if(diff > 0){
+      for(var i=0;i<diff;i++){ try{ history.pushState({ gsh: _navLevel + i + 1 }, ''); }catch(e){} }
+      _navLevel = newLevel;
+    } else if(diff < 0){
+      _navLevel = newLevel;
+      for(var j=0;j<-diff;j++){ try{ history.back(); }catch(e){} }
+    }
+  }
+
+  window.addEventListener('popstate', function(){
+    _inPopstate = true;
+    closeTopOverlay();
+    _navLevel = computeNavLevel();
+    render();
+    _inPopstate = false;
+  });
+
   // ---- Rendering ----
   function render(){
+    syncNavHistory();
+    renderInner();
+  }
+
+  function renderInner(){
     var root = document.getElementById('root');
     if(state.songs === null){
       root.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#9a8f80;">Loading your setlist…</div>';
@@ -1665,42 +1909,20 @@
     html += '<div class="sidebar' + (state.sidebarOpen ? ' open' : '') + '">';
     html += '  <div class="brand"><div class="brand-mark"><span class="bolt">\u266A</span><h1>Gig Song Hits</h1></div><p>Your on-stage songbook</p></div>';
 
+    html += buildSearchRowHtml();
     if(state.sidebarView === 'folders'){
       var folders = getFolders();
       html += '  <div class="setlist-head"><span>Folders (' + folders.length + ')</span><button class="new-btn" id="btn-add-folder-toggle" title="New folder">+</button></div>';
       if(state.addingFolder){
         html += '  <div class="add-folder-row"><input id="new-folder-input" placeholder="Folder name (e.g. Praise Night)" maxlength="40" /><button id="btn-add-folder-confirm">Add</button><button class="cancel-x" id="btn-add-folder-cancel">\u2715</button></div>';
       }
-      html += '  <div class="song-list">';
-      var totalCount = state.songs.length;
-      html += '    <div class="folder-card all" data-folder="__all__"><span class="ico">\uD83C\uDFB5</span><div class="info"><span class="name">All Songs</span><span class="count">' + totalCount + ' song' + (totalCount===1?'':'s') + '</span></div></div>';
-      folders.forEach(function(f){
-        var count = state.songs.filter(function(s){ return (s.folder || 'Gig') === f; }).length;
-        if(state.renamingFolder === f){
-          html += '    <div class="folder-card renaming" data-folder="' + escapeHtml(f) + '"><span class="ico">\uD83D\uDCC1</span><input id="rename-folder-input" class="rename-folder-input" value="' + escapeHtml(f) + '" maxlength="40" /><div class="folder-actions"><button class="folder-action-btn" data-rename-confirm="' + escapeHtml(f) + '" title="Save">\u2713</button><button class="folder-action-btn" data-rename-cancel="1" title="Cancel">\u2715</button></div></div>';
-        } else {
-          html += '    <div class="folder-card" data-folder="' + escapeHtml(f) + '"><span class="ico">\uD83D\uDCC1</span><div class="info"><span class="name">' + escapeHtml(f) + '</span><span class="count">' + count + ' song' + (count===1?'':'s') + '</span></div><div class="folder-actions"><button class="folder-action-btn" data-rename="' + escapeHtml(f) + '" title="Rename">\u270E</button><button class="folder-action-btn danger" data-delfolder="' + escapeHtml(f) + '" title="Delete">\uD83D\uDDD1\uFE0F</button></div></div>';
-        }
-      });
-      html += '  </div>';
+      html += '  <div class="song-list" id="sidebar-list">' + buildSidebarListHtml() + '</div>';
       html += '  <div class="sidebar-foot"><button class="foot-btn" id="btn-import-side">Import</button><button class="foot-btn" id="btn-import-url-side">\uD83D\uDD17 URL</button>' + (state.sidebarOpen ? '<button class="foot-btn" id="btn-close-side">Close</button>' : '') + '</div>';
       html += '  <div class="sidebar-foot"><button class="foot-btn" id="btn-backup-json">\u2B07 Backup JSON</button><button class="foot-btn" id="btn-restore-json">\u2B06 Restore JSON</button></div>';
     } else {
-      var folderSongs = state.currentFolder ? state.songs.filter(function(s){ return (s.folder || 'Gig') === state.currentFolder; }) : state.songs;
-      html += '  <div class="folder-header"><button class="back-btn" id="btn-back-folders">\u2190</button><span class="fname">' + escapeHtml(state.currentFolder || 'All Songs') + '</span><span class="fcount">' + folderSongs.length + '</span><button class="new-btn" id="btn-share-folder" title="Share link ng folder" style="background:var(--teal);color:#0f1f1e;">\uD83D\uDD17</button><button class="new-btn" id="btn-new" title="New song">+</button></div>';
-      html += '  <div class="song-list">';
-      if(folderSongs.length === 0){
-        html += '<div class="empty-hint">Wala pang kanta dito. Pindutin ang + para gumawa, o mag-import ng file sa ibaba.</div>';
-      } else {
-        for(var i=0;i<folderSongs.length;i++){
-          var s = folderSongs[i];
-          html += '<div class="song-item' + (s.id === state.activeId ? ' active' : '') + '" data-id="' + s.id + '">';
-          html += '  <span class="t">' + escapeHtml(s.title || 'Untitled') + '</span>';
-          html += '  <span class="k">Key ' + escapeHtml(s.key || '\u2014') + (s.bpm ? ' \u00b7 ' + escapeHtml(s.bpm) + ' bpm' : '') + '</span>';
-          html += '</div>';
-        }
-      }
-      html += '  </div>';
+      var folderSongsAll = state.currentFolder ? state.songs.filter(function(s){ return (s.folder || 'Gig') === state.currentFolder; }) : state.songs;
+      html += '  <div class="folder-header"><button class="back-btn" id="btn-back-folders">\u2190</button><span class="fname">' + escapeHtml(state.currentFolder || 'All Songs') + '</span><span class="fcount">' + folderSongsAll.length + '</span><button class="new-btn" id="btn-share-folder" title="Share link ng folder" style="background:var(--teal);color:#0f1f1e;">\uD83D\uDD17</button><button class="new-btn" id="btn-new" title="New song">+</button></div>';
+      html += '  <div class="song-list" id="sidebar-list">' + buildSidebarListHtml() + '</div>';
       html += '  <div class="sidebar-foot"><button class="foot-btn" id="btn-import-side">Import</button><button class="foot-btn" id="btn-import-url-side">\uD83D\uDD17 URL</button>' + (state.sidebarOpen ? '<button class="foot-btn" id="btn-close-side">Close</button>' : '') + '</div>';
       html += '  <div class="sidebar-foot"><button class="foot-btn" id="btn-backup-json">\u2B07 Backup JSON</button><button class="foot-btn" id="btn-restore-json">\u2B06 Restore JSON</button></div>';
     }
@@ -1943,40 +2165,8 @@
     if(byId('btn-toggle-sidebar')) byId('btn-toggle-sidebar').onclick = function(){ state.sidebarOpen = !state.sidebarOpen; render(); };
     if(byId('btn-close-side')) byId('btn-close-side').onclick = function(){ state.sidebarOpen = false; render(); };
 
-    var folderCards = document.querySelectorAll('.folder-card');
-    folderCards.forEach(function(el){
-      if(el.classList.contains('renaming')) return;
-      el.onclick = function(){ openFolder(el.getAttribute('data-folder')); };
-    });
+    bindSidebarListHandlers();
 
-    var renameBtns = document.querySelectorAll('[data-rename]');
-    renameBtns.forEach(function(btn){
-      btn.onclick = function(e){ e.stopPropagation(); startRenameFolder(btn.getAttribute('data-rename')); };
-    });
-    var delFolderBtns = document.querySelectorAll('[data-delfolder]');
-    delFolderBtns.forEach(function(btn){
-      btn.onclick = function(e){ e.stopPropagation(); requestDeleteFolder(btn.getAttribute('data-delfolder')); };
-    });
-    var renameConfirmBtns = document.querySelectorAll('[data-rename-confirm]');
-    renameConfirmBtns.forEach(function(btn){
-      btn.onclick = function(e){
-        e.stopPropagation();
-        var inp = byId('rename-folder-input');
-        renameFolder(btn.getAttribute('data-rename-confirm'), inp ? inp.value : '');
-      };
-    });
-    var renameCancelBtns = document.querySelectorAll('[data-rename-cancel]');
-    renameCancelBtns.forEach(function(btn){
-      btn.onclick = function(e){ e.stopPropagation(); cancelRenameFolder(); };
-    });
-    var renameFolderInput = byId('rename-folder-input');
-    if(renameFolderInput){
-      renameFolderInput.onclick = function(e){ e.stopPropagation(); };
-      renameFolderInput.onkeydown = function(e){
-        if(e.key === 'Enter'){ e.preventDefault(); renameFolder(state.renamingFolder, renameFolderInput.value); }
-        if(e.key === 'Escape'){ cancelRenameFolder(); }
-      };
-    }
     if(byId('btn-cancel-delete-folder')) byId('btn-cancel-delete-folder').onclick = cancelDeleteFolder;
     if(byId('btn-confirm-delete-folder')) byId('btn-confirm-delete-folder').onclick = deleteFolderConfirmed;
     if(byId('confirm-overlay-folder')) byId('confirm-overlay-folder').onclick = function(e){ if(e.target.id === 'confirm-overlay-folder') cancelDeleteFolder(); };
@@ -1992,10 +2182,13 @@
     var newFolderInput = byId('new-folder-input');
     if(newFolderInput) newFolderInput.onkeydown = function(e){ if(e.key === 'Enter') confirmAddFolder(); if(e.key === 'Escape'){ state.addingFolder = false; render(); } };
 
-    var items = document.querySelectorAll('.song-item');
-    items.forEach(function(el){
-      el.onclick = function(){ selectSong(el.getAttribute('data-id')); };
-    });
+    var searchInput = byId('sidebar-search');
+    if(searchInput){
+      searchInput.oninput = function(e){ state.searchQuery = e.target.value; refreshSidebarList(); };
+      searchInput.onkeydown = function(e){ if(e.key === 'Escape'){ state.searchQuery = ''; searchInput.value = ''; refreshSidebarList(); } };
+    }
+    var searchClearBtn = byId('btn-search-clear');
+    if(searchClearBtn) searchClearBtn.onclick = function(){ state.searchQuery = ''; render(); var si = byId('sidebar-search'); if(si) si.focus(); };
 
     var fileInput = byId('file-input');
     if(fileInput) fileInput.onchange = handleImportFile;
