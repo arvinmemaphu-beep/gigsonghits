@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gig-song-hits-v13';
+const CACHE_NAME = 'gig-song-hits-v14';
 const ASSETS = [
   './',
   './index.html',
@@ -27,10 +27,11 @@ self.addEventListener('fetch', function(event){
   var isHtml = req.mode === 'navigate' || (req.headers.get('accept') || '').indexOf('text/html') !== -1;
 
   if(isHtml){
-    // Network-first for the app shell so updates show up immediately when online;
-    // falls back to the cached copy when offline.
+    // Network-first for the app shell so updates show up immediately when online.
+    // cache: 'no-store' bypasses the browser's own HTTP cache (not just the SW
+    // cache) so a genuinely fresh copy is fetched from the server every time.
     event.respondWith(
-      fetch(req).then(function(res){
+      fetch(req, { cache: 'no-store' }).then(function(res){
         var resClone = res.clone();
         caches.open(CACHE_NAME).then(function(cache){ cache.put(req, resClone); });
         return res;
