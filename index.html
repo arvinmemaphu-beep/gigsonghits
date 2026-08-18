@@ -102,6 +102,12 @@
   .add-folder-row input:focus{ outline:none; border-color:var(--gold-dim); }
   .add-folder-row button{ background:var(--gold); color:#181410; border:none; border-radius:5px; padding:0 10px; font-size:11px; font-weight:700; }
   .add-folder-row .cancel-x{ background:var(--surface-2); color:var(--text); border:1px solid var(--line); }
+  .search-row{ display:flex; align-items:center; gap:6px; padding: 8px 10px 6px; position:relative; }
+  .search-input{ flex:1; background:var(--surface-2); border:1px solid var(--line); color:var(--text); border-radius:7px; padding:8px 30px 8px 10px; font-size:13px; }
+  .search-input:focus{ outline:none; border-color:var(--gold-dim); }
+  .search-input::placeholder{ color:var(--muted); }
+  .search-clear{ position:absolute; right:16px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--muted); font-size:12px; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+  .search-clear:hover{ background:var(--surface-2); color:var(--gold); }
 
   .sidebar-foot{ border-top:1px solid var(--line); padding:10px; display:flex; gap:8px; background:var(--surface); position:sticky; bottom:0; flex-shrink:0; }
   .foot-btn{ flex:1; background:var(--surface-2); border:1px solid var(--line); color:var(--text); font-size:11px; letter-spacing:1px; text-transform:uppercase; padding:9px 4px; border-radius:5px; }
@@ -510,6 +516,7 @@
     scrollStarted: false,
     fontSize: 19,
     sidebarOpen: false,
+    searchQuery: '',
     confirmDelete: null,
     renamingFolder: null,
     confirmDeleteFolder: null,
@@ -665,9 +672,13 @@
       await persistIndex(loaded);
     }
     state.songs = loaded;
-    state.activeId = loaded[0].id;
-    var initSpeed = computeScrollSpeedFromBpm(loaded[0].bpm);
-    if(initSpeed) state.scrollSpeed = initSpeed;
+    // Always land on the "All Songs" list on open, instead of jumping
+    // straight into whichever song was last active.
+    state.activeId = null;
+    state.sidebarView = 'folderSongs';
+    state.currentFolder = null;
+    state.sidebarOpen = true;
+    state.searchQuery = '';
     render();
   }
 
@@ -736,12 +747,14 @@
   function openFolder(name){
     state.currentFolder = name === '__all__' ? null : name;
     state.sidebarView = 'folderSongs';
+    state.searchQuery = '';
     render();
   }
 
   function backToFolders(){
     state.sidebarView = 'folders';
     state.addingFolder = false;
+    state.searchQuery = '';
     render();
   }
 
@@ -1649,6 +1662,74 @@
   }
 
   // ---- Rendering ----
+  function filterSongsByQuery(list, query){
+    var q = (query || '').trim().toLowerCase();
+    if(!q) return list;
+    return list.filter(function(s){
+      var title = (s.title || '').toLowerCase();
+      var key = (s.key || '').toLowerCase();
+      var folder = (s.folder || '').toLowerCase();
+      return title.indexOf(q) !== -1 || key.indexOf(q) !== -1 || folder.indexOf(q) !== -1;
+    });
+  }
+
+  function renderSongListItemsHtml(folderSongs){
+    var visible = filterSongsByQuery(folderSongs, state.searchQuery);
+    var html = '';
+    if(folderSongs.length === 0){
+      html += '<div class="empty-hint">Wala pang kanta dito. Pindutin ang + para gumawa, o mag-import ng file sa ibaba.</div>';
+    } else if(visible.length === 0){
+      html += '<div class="empty-hint">Walang nahanap na kanta na tumugma sa "' + escapeHtml(state.searchQuery) + '".</div>';
+    } else {
+      for(var i=0;i<visible.length;i++){
+        var s = visible[i];
+        html += '<div class="song-item' + (s.id === state.activeId ? ' active' : '') + '" data-id="' + s.id + '">';
+        html += '  <span class="t">' + escapeHtml(s.title || 'Untitled') + '</span>';
+        html += '  <span class="k">Key ' + escapeHtml(s.key || '\u2014') + (s.bpm ? ' \u00b7 ' + escapeHtml(s.bpm) + ' bpm' : '') + '</span>';
+        html += '</div>';
+      }
+    }
+    return html;
+  }
+
+  function bindSongItemClicks(){
+    var items = document.querySelectorAll('.song-item');
+    items.forEach(function(el){
+      el.onclick = function(){ selectSong(el.getAttribute('data-id')); };
+    });
+  }
+
+  function renderSongListOnly(){
+    var listEl = document.getElementById('song-list');
+    if(!listEl) return;
+    var folderSongs = state.currentFolder ? state.songs.filter(function(s){ return (s.folder || 'Gig') === state.currentFolder; }) : state.songs;
+    listEl.innerHTML = renderSongListItemsHtml(folderSongs);
+    bindSongItemClicks();
+    var countEl = document.getElementById('song-list-fcount');
+    if(countEl){
+      var visibleCount = filterSongsByQuery(folderSongs, state.searchQuery).length;
+      countEl.textContent = state.searchQuery ? (visibleCount + ' / ' + folderSongs.length) : folderSongs.length;
+    }
+    var clearBtn = document.getElementById('btn-search-clear');
+    var searchRow = document.querySelector('.search-row');
+    if(searchRow){
+      var existingClear = document.getElementById('btn-search-clear');
+      if(state.searchQuery && !existingClear){
+        var btn = document.createElement('button');
+        btn.className = 'search-clear';
+        btn.id = 'btn-search-clear';
+        btn.title = 'Clear';
+        btn.textContent = '\u2715';
+        btn.onclick = function(){ state.searchQuery = ''; var inp = document.getElementById('song-search'); if(inp) inp.value = ''; renderSongListOnly(); if(inp) inp.focus(); };
+        searchRow.appendChild(btn);
+      } else if(!state.searchQuery && existingClear){
+        existingClear.remove();
+      } else if(existingClear){
+        existingClear.onclick = function(){ state.searchQuery = ''; var inp = document.getElementById('song-search'); if(inp) inp.value = ''; renderSongListOnly(); if(inp) inp.focus(); };
+      }
+    }
+  }
+
   function render(){
     var root = document.getElementById('root');
     if(state.songs === null){
@@ -1687,20 +1768,9 @@
       html += '  <div class="sidebar-foot"><button class="foot-btn" id="btn-backup-json">\u2B07 Backup JSON</button><button class="foot-btn" id="btn-restore-json">\u2B06 Restore JSON</button></div>';
     } else {
       var folderSongs = state.currentFolder ? state.songs.filter(function(s){ return (s.folder || 'Gig') === state.currentFolder; }) : state.songs;
-      html += '  <div class="folder-header"><button class="back-btn" id="btn-back-folders">\u2190</button><span class="fname">' + escapeHtml(state.currentFolder || 'All Songs') + '</span><span class="fcount">' + folderSongs.length + '</span><button class="new-btn" id="btn-share-folder" title="Share link ng folder" style="background:var(--teal);color:#0f1f1e;">\uD83D\uDD17</button><button class="new-btn" id="btn-new" title="New song">+</button></div>';
-      html += '  <div class="song-list">';
-      if(folderSongs.length === 0){
-        html += '<div class="empty-hint">Wala pang kanta dito. Pindutin ang + para gumawa, o mag-import ng file sa ibaba.</div>';
-      } else {
-        for(var i=0;i<folderSongs.length;i++){
-          var s = folderSongs[i];
-          html += '<div class="song-item' + (s.id === state.activeId ? ' active' : '') + '" data-id="' + s.id + '">';
-          html += '  <span class="t">' + escapeHtml(s.title || 'Untitled') + '</span>';
-          html += '  <span class="k">Key ' + escapeHtml(s.key || '\u2014') + (s.bpm ? ' \u00b7 ' + escapeHtml(s.bpm) + ' bpm' : '') + '</span>';
-          html += '</div>';
-        }
-      }
-      html += '  </div>';
+      html += '  <div class="folder-header"><button class="back-btn" id="btn-back-folders">\u2190</button><span class="fname">' + escapeHtml(state.currentFolder || 'All Songs') + '</span><span class="fcount" id="song-list-fcount">' + folderSongs.length + '</span><button class="new-btn" id="btn-share-folder" title="Share link ng folder" style="background:var(--teal);color:#0f1f1e;">\uD83D\uDD17</button><button class="new-btn" id="btn-new" title="New song">+</button></div>';
+      html += '  <div class="search-row"><input id="song-search" class="search-input" type="text" placeholder="\uD83D\uDD0D Search songs\u2026" value="' + escapeHtml(state.searchQuery || '') + '" autocomplete="off" />' + (state.searchQuery ? '<button class="search-clear" id="btn-search-clear" title="Clear">\u2715</button>' : '') + '</div>';
+      html += '  <div class="song-list" id="song-list">' + renderSongListItemsHtml(folderSongs) + '</div>';
       html += '  <div class="sidebar-foot"><button class="foot-btn" id="btn-import-side">Import</button><button class="foot-btn" id="btn-import-url-side">\uD83D\uDD17 URL</button>' + (state.sidebarOpen ? '<button class="foot-btn" id="btn-close-side">Close</button>' : '') + '</div>';
       html += '  <div class="sidebar-foot"><button class="foot-btn" id="btn-backup-json">\u2B07 Backup JSON</button><button class="foot-btn" id="btn-restore-json">\u2B06 Restore JSON</button></div>';
     }
@@ -1992,10 +2062,14 @@
     var newFolderInput = byId('new-folder-input');
     if(newFolderInput) newFolderInput.onkeydown = function(e){ if(e.key === 'Enter') confirmAddFolder(); if(e.key === 'Escape'){ state.addingFolder = false; render(); } };
 
-    var items = document.querySelectorAll('.song-item');
-    items.forEach(function(el){
-      el.onclick = function(){ selectSong(el.getAttribute('data-id')); };
-    });
+    bindSongItemClicks();
+
+    var songSearchInput = byId('song-search');
+    if(songSearchInput){
+      songSearchInput.oninput = function(e){ state.searchQuery = e.target.value; renderSongListOnly(); };
+      songSearchInput.onkeydown = function(e){ if(e.key === 'Escape'){ state.searchQuery = ''; songSearchInput.value=''; renderSongListOnly(); } };
+    }
+    if(byId('btn-search-clear')) byId('btn-search-clear').onclick = function(){ state.searchQuery = ''; renderSongListOnly(); var inp = byId('song-search'); if(inp) inp.focus(); };
 
     var fileInput = byId('file-input');
     if(fileInput) fileInput.onchange = handleImportFile;
