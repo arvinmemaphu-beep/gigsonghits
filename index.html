@@ -170,9 +170,9 @@
 
   .editor-wrap{ display:flex; flex-direction:column; gap:10px; }
   .editor-highlight-wrap{ position:relative; width:100%; min-height:420px; }
-  .editor-backdrop{ position:absolute; top:0; left:0; right:0; bottom:0; width:100%; height:100%; box-sizing:border-box; margin:0; overflow:hidden; background: var(--surface); border:1px solid var(--line); border-radius:8px; color: var(--text); font-family:'Courier New',monospace; font-size:14px; line-height:1.8; padding:16px; white-space:pre-wrap; word-wrap:break-word; overflow-wrap:break-word; pointer-events:none; }
+  .editor-backdrop{ position:absolute; top:0; left:0; right:0; bottom:0; width:100%; height:100%; box-sizing:border-box; margin:0; overflow:hidden; background: var(--surface); border:1px solid var(--line); border-radius:8px; color: var(--text); font-family: 'Roboto Mono', 'DejaVu Sans Mono', 'Consolas', 'Menlo', monospace; line-height: 2.15; padding:16px; white-space:pre-wrap; word-wrap:break-word; overflow-wrap:break-word; pointer-events:none; }
   .chord-tok-edit{ color: var(--gold); font-weight:700; }
-  .editor{ position:relative; z-index:1; width:100%; height:100%; min-height:420px; box-sizing:border-box; background: transparent; border:1px solid transparent; border-radius:8px; color: transparent; caret-color: var(--text); font-family:'Courier New',monospace; font-size:14px; line-height:1.8; padding:16px; resize:vertical; white-space:pre-wrap; word-wrap:break-word; overflow-wrap:break-word; }
+  .editor{ position:relative; z-index:1; width:100%; height:100%; min-height:420px; box-sizing:border-box; background: transparent; border:1px solid transparent; border-radius:8px; color: transparent; caret-color: var(--text); font-family: 'Roboto Mono', 'DejaVu Sans Mono', 'Consolas', 'Menlo', monospace; line-height: 2.15; padding:16px; resize:vertical; white-space:pre-wrap; word-wrap:break-word; overflow-wrap:break-word; }
   .editor:focus{ outline:none; }
   .editor:focus ~ .editor-backdrop, .editor-highlight-wrap:focus-within .editor-backdrop{ border-color: var(--gold-dim); }
   .editor-hint{ color:var(--muted); font-size:12px; line-height:1.6; }
@@ -2022,8 +2022,8 @@
       html += '</span></div>';
       html += '<p class="editor-hint">Ilagay ang chords sa loob ng brackets bago ang syllable, hal. <code>[G]Sana\'y di na lang</code>. Pwede ring gumawa ng hiwalay na linya ng chords sa itaas ng lyrics.</p>';
       html += '<div class="editor-highlight-wrap">';
-      html += '<textarea class="editor" id="edit-body" spellcheck="false">' + escapeHtml(song.body) + '</textarea>';
-      html += '<div class="editor-backdrop" id="edit-body-backdrop" aria-hidden="true">' + renderEditorHtml(song.body) + '</div>';
+      html += '<textarea class="editor" id="edit-body" spellcheck="false" style="font-size:' + state.fontSize + 'px;">' + escapeHtml(song.body) + '</textarea>';
+      html += '<div class="editor-backdrop" id="edit-body-backdrop" aria-hidden="true" style="font-size:' + state.fontSize + 'px;">' + renderEditorHtml(song.body) + '</div>';
       html += '</div>';
       html += '</div>';
     }
@@ -2261,6 +2261,10 @@
       state.fontSize = Number(e.target.value);
       var chart = document.querySelector('.chart');
       if(chart) chart.style.fontSize = state.fontSize + 'px';
+      var editBodyEl = byId('edit-body');
+      var editBackdropEl = byId('edit-body-backdrop');
+      if(editBodyEl) editBodyEl.style.fontSize = state.fontSize + 'px';
+      if(editBackdropEl) editBackdropEl.style.fontSize = state.fontSize + 'px';
     };
 
     // Touch handling on the lyrics area does two things:
@@ -2301,6 +2305,10 @@
             state.fontSize = newSize;
             var chart = document.querySelector('.chart');
             if(chart) chart.style.fontSize = state.fontSize + 'px';
+            var editBodyEl = byId('edit-body');
+            var editBackdropEl = byId('edit-body-backdrop');
+            if(editBodyEl) editBodyEl.style.fontSize = state.fontSize + 'px';
+            if(editBackdropEl) editBackdropEl.style.fontSize = state.fontSize + 'px';
             var slider = byId('range-font');
             if(slider) slider.value = state.fontSize;
           }
