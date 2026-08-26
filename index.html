@@ -2326,6 +2326,13 @@
     if(byId('btn-toggle-mode')) byId('btn-toggle-mode').onclick = function(){
       state.mode = state.mode === 'edit' ? 'view' : 'edit';
       state.editorNewFolder = false;
+      if(state.mode === 'edit'){
+        // Auto-scroll has no business running while the person is editing lyrics.
+        state.autoScroll = false;
+        state.scrollStarted = false;
+        stopAutoScroll();
+        stopCountdown();
+      }
       render();
       if(state.mode === 'edit') focusTitleInput();
     };
