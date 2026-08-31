@@ -135,7 +135,7 @@
   .icon-btn{ background:var(--surface-2); border:1px solid var(--line); color:var(--text); border-radius:6px; padding:7px 12px; font-size:11px; letter-spacing:1px; text-transform:uppercase; display:flex; align-items:center; gap:6px; }
   .icon-btn:hover{ border-color:var(--gold-dim); color:var(--gold); }
 
-  .stage{ flex:1; overflow-y:auto; overflow-x:hidden; padding: 28px 40px 200px; touch-action: pan-y; }
+  .stage{ flex:1; overflow-y:auto; overflow-x:auto; -webkit-overflow-scrolling:touch; padding: 28px 40px 200px; touch-action: pan-x pan-y; }
   @media (max-width:800px){ .stage{ padding: 20px 16px 200px; } }
 
   .song-title-row{ display:flex; align-items:baseline; gap:14px; margin-bottom:4px; flex-wrap:wrap; }
@@ -154,7 +154,7 @@
   .folder-new-row button{ background:var(--gold); color:#181410; border:none; border-radius:5px; padding:6px 9px; font-size:11px; font-weight:700; }
   .folder-new-row .cancel-x{ background:var(--surface-2); color:var(--text); border:1px solid var(--line); padding:6px 9px; }
 
-  .chart{ font-family: 'Roboto Mono', 'DejaVu Sans Mono', 'Consolas', 'Menlo', monospace; line-height: 2.15; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; }
+  .chart{ font-family: 'Roboto Mono', 'DejaVu Sans Mono', 'Consolas', 'Menlo', monospace; line-height: 2.15; white-space: pre; overflow-wrap: normal; word-break: normal; max-width: none; }
   .chord-line{ color: var(--gold); font-weight:700; letter-spacing:0.5px; }
   .lyric-line{ color: var(--text); }
   .chord-tok{ background: rgba(232,163,61,0.14); color:var(--gold); padding:1px 5px; border-radius:4px; display:inline-block; margin-right:2px; font-weight:700; cursor:pointer; transition: background 0.12s, transform 0.12s; }
