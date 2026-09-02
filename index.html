@@ -743,7 +743,7 @@
       await persistSong(song);
       await persistIndex([song]);
       state.songs = [song];
-      state.activeId = id;
+      state.activeId = null;
       render();
       return;
     }
@@ -767,9 +767,7 @@
       await persistIndex(loaded);
     }
     state.songs = loaded;
-    state.activeId = loaded[0].id;
-    var initSpeed = computeScrollSpeedFromBpm(loaded[0].bpm);
-    if(initSpeed) state.scrollSpeed = initSpeed;
+    state.activeId = null;
     render();
   }
 
