@@ -187,6 +187,16 @@
   .tuner-note.flat{ color:var(--danger); }
   .tuner-note.sharp{ color:var(--teal); }
   .tuner-note.in-tune{ color:#6fce7f; }
+  .tuner-note.in-tune{ animation: tunerPulse 0.6s ease-in-out; }
+  @keyframes tunerPulse{ 0%{ transform:scale(1); } 40%{ transform:scale(1.12); } 100%{ transform:scale(1); } }
+  .tuner-check{ font-size:13px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#6fce7f; height:16px; }
+  .tuner-status-text{ font-size:11px; color:var(--muted); letter-spacing:0.5px; min-height:14px; }
+  .tuner-status-text.flat{ color:var(--danger); }
+  .tuner-status-text.sharp{ color:var(--teal); }
+  .tuner-status-text.in-tune{ color:#6fce7f; font-weight:700; }
+  .tuner-meter-row{ display:flex; align-items:center; gap:8px; width:100%; margin-top:6px; }
+  .tuner-meter-endlabel{ font-size:9px; letter-spacing:1px; color:var(--muted); text-transform:uppercase; white-space:nowrap; flex:none; }
+  .tuner-meter-row .tuner-meter{ width:auto; flex:1; margin-top:0; }
   .tuner-hz{ font-size:11px; color:var(--muted); letter-spacing:1px; }
   .tuner-meter{ width:100%; height:10px; background:var(--bg); border-radius:6px; position:relative; overflow:hidden; margin-top:8px; border:1px solid var(--line); }
   .tuner-meter .center-mark{ position:absolute; left:50%; top:0; bottom:0; width:2px; background:var(--line); transform:translateX(-1px); }
@@ -703,6 +713,8 @@
   var tunerDataBuffer = null;
   var tunerRefOsc = null;
   var tunerRefOscTimeout = null;
+  var tunerInTuneStreak = 0;
+  var tunerChimePlayed = false;
 
   function frequencyToNote(frequency){
     var noteNum = 12 * (Math.log(frequency / 440) / Math.LN2);
@@ -789,6 +801,8 @@
     if(tunerAudioCtx){ try{ tunerAudioCtx.close(); }catch(e){} tunerAudioCtx = null; }
     tunerAnalyser = null;
     tunerSourceNode = null;
+    tunerInTuneStreak = 0;
+    tunerChimePlayed = false;
     state.tunerListening = false;
   }
 
@@ -828,6 +842,7 @@
     var noteEl = document.getElementById('tuner-note-display');
     var hzEl = document.getElementById('tuner-hz-display');
     var needleEl = document.getElementById('tuner-needle');
+    var statusEl = document.getElementById('tuner-status-text');
     if(!noteEl || !hzEl || !needleEl) return;
     if(freq === -1 || !isFinite(freq) || freq <= 0){
       noteEl.textContent = '\u2014';
@@ -835,21 +850,50 @@
       hzEl.textContent = 'Tumugtog ng kwerdas\u2026';
       needleEl.style.left = '50%';
       needleEl.className = 'needle';
+      if(statusEl){ statusEl.textContent = 'Tumugtog ng kwerdas para magsimula'; statusEl.className = 'tuner-status-text'; }
+      tunerInTuneStreak = 0;
+      tunerChimePlayed = false;
       return;
     }
     var nearest = nearestTunerString(freq);
     var note = frequencyToNote(freq);
     var cents = nearest ? Math.floor(1200 * Math.log(freq / nearest.freq) / Math.LN2) : note.cents;
     var displayName = nearest ? nearest.name.replace(/[0-9]/,'') : note.name;
+    var IN_TUNE_WINDOW = 6; // +/- cents considered "in tune"
     var stateClass = 'in-tune';
-    if(cents > 6) stateClass = 'sharp';
-    else if(cents < -6) stateClass = 'flat';
+    if(cents > IN_TUNE_WINDOW) stateClass = 'sharp';
+    else if(cents < -IN_TUNE_WINDOW) stateClass = 'flat';
     noteEl.textContent = displayName;
     noteEl.className = 'tuner-note ' + stateClass;
     hzEl.textContent = freq.toFixed(1) + ' Hz \u00b7 ' + (cents > 0 ? '+' : '') + cents + ' cents';
     var clamped = Math.max(-50, Math.min(50, cents));
     needleEl.style.left = (50 + clamped) + '%';
     needleEl.className = 'needle ' + stateClass;
+
+    if(statusEl){
+      if(stateClass === 'in-tune'){
+        statusEl.textContent = '\u2713 TAMA NA! (' + (nearest ? nearest.name.replace(/[0-9]/,'') : displayName) + ')';
+      } else if(stateClass === 'flat'){
+        statusEl.textContent = '\u25C0 Masyadong MABABA \u2014 higpitan ang kwerdas (paikutin patindi)';
+      } else {
+        statusEl.textContent = '\u25B6 Masyadong MATAAS \u2014 luwagan ang kwerdas (paikutin paluwag)';
+      }
+      statusEl.className = 'tuner-status-text ' + stateClass;
+    }
+
+    // Confirmation "ding" once the reading holds steady in-tune for a few
+    // consecutive polls (avoids a false beep from a single noisy sample),
+    // mirroring how a physical clip-on tuner lights up/rings when locked in.
+    if(stateClass === 'in-tune'){
+      tunerInTuneStreak++;
+      if(tunerInTuneStreak >= 3 && !tunerChimePlayed){
+        tunerChimePlayed = true;
+        playInTuneChime();
+      }
+    } else {
+      tunerInTuneStreak = 0;
+      tunerChimePlayed = false;
+    }
 
     document.querySelectorAll('.tuner-string-btn').forEach(function(btn){
       if(nearest && btn.getAttribute('data-string') === nearest.name){
@@ -885,6 +929,31 @@
   function stopReferenceTone(){
     if(tunerRefOscTimeout){ clearTimeout(tunerRefOscTimeout); tunerRefOscTimeout = null; }
     if(tunerRefOsc){ try{ tunerRefOsc.stop(); }catch(e){} tunerRefOsc = null; }
+  }
+
+  // Short two-note "ding" played once a reading has held steady in-tune,
+  // like the confirmation beep/light on a physical clip-on tuner.
+  function playInTuneChime(){
+    try{
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if(!tunerAudioCtx || tunerAudioCtx.state === 'closed') tunerAudioCtx = new AC();
+      var ctx = tunerAudioCtx;
+      var now = ctx.currentTime;
+      [ [1046.50, now], [1568.00, now + 0.09] ].forEach(function(pair){
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = pair[0];
+        gain.gain.value = 0.0001;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        var t = pair[1];
+        gain.gain.exponentialRampToValueAtTime(0.12, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+        osc.start(t);
+        osc.stop(t + 0.36);
+      });
+    }catch(e){}
   }
 
   function getActiveSong(){
@@ -2474,6 +2543,7 @@
       var tuningList = TUNINGS[state.tunerInstrument];
       html += '<div class="confirm-overlay" id="tuner-overlay"><div class="tuner-modal">';
       html += '<h3>\uD83C\uDFB8 Tuner</h3>';
+      html += '<p class="tuner-hint" style="margin-top:-6px;">Kapag <b style="color:#6fce7f;">GITNA</b> ang needle at <b style="color:#6fce7f;">berde</b> \u2014 tama na ang tono!</p>';
       html += '<div class="tuner-inst-toggle">';
       html += '<button data-inst="guitar" class="' + (state.tunerInstrument==='guitar'?'on':'') + '">Guitar</button>';
       html += '<button data-inst="ukulele" class="' + (state.tunerInstrument==='ukulele'?'on':'') + '">Ukulele</button>';
@@ -2482,7 +2552,8 @@
       if(state.tunerListening){
         html += '<div class="tuner-note" id="tuner-note-display">\u2014</div>';
         html += '<div class="tuner-hz" id="tuner-hz-display">Tumugtog ng kwerdas\u2026</div>';
-        html += '<div class="tuner-meter"><div class="center-mark"></div><div class="needle" id="tuner-needle"></div></div>';
+        html += '<div class="tuner-meter-row"><span class="tuner-meter-endlabel">\u25C0 MABABA</span><div class="tuner-meter"><div class="center-mark"></div><div class="needle" id="tuner-needle"></div></div><span class="tuner-meter-endlabel">MATAAS \u25B6</span></div>';
+        html += '<div class="tuner-status-text" id="tuner-status-text">Tumugtog ng kwerdas para magsimula</div>';
       } else {
         html += '<p class="tuner-idle">Pindutin ang "Simulan" at bigyan ng mic permission para awtomatikong ma-detect ang tono. Pwede rin manual gamit ang reference tone sa baba.</p>';
       }
