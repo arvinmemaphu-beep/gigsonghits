@@ -55,11 +55,12 @@
   }
 
   .sidebar{ background: var(--surface); border-right: 1px solid var(--line); display:flex; flex-direction:column; overflow-y:auto; overflow-x:hidden; }
-  .brand{ padding: 18px 16px 14px 16px; border-bottom: 1px solid var(--line); }
+  .brand{ padding: 18px 16px 14px 16px; border-bottom: 1px solid var(--line); display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
   .brand-mark{ display:flex; align-items:baseline; gap:6px; }
   .brand-mark .bolt{ color:var(--gold); font-size:20px; }
   .brand h1{ margin:0; font-size:20px; letter-spacing:1px; font-weight:700; text-transform:uppercase; }
   .brand p{ margin:4px 0 0; font-size:11px; color:var(--muted); letter-spacing:1.5px; text-transform:uppercase; }
+  .brand-tuner-btn{ background:var(--gold); color:#181410; border:none; border-radius:7px; padding:8px 10px; font-size:11px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; white-space:nowrap; flex-shrink:0; }
   .trademark{ position:fixed; bottom:8px; right:12px; font-size:10px; letter-spacing:2px; color:var(--gold-dim); text-transform:uppercase; z-index:5; pointer-events:none; opacity:0.85; }
 
   .setlist-head{ display:flex; align-items:center; justify-content:space-between; padding: 14px 16px 8px; }
@@ -208,8 +209,8 @@
   .tuner-idle{ color:var(--muted); font-size:12px; line-height:1.6; }
   .tuner-listen-btn{ width:100%; background:var(--gold); color:#181410; border:none; border-radius:8px; padding:11px; font-size:13px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:12px; }
   .tuner-listen-btn.listening{ background:var(--danger); color:#fff; }
-  .tuner-strings{ display:flex; justify-content:center; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
-  .tuner-string-btn{ background:var(--surface-2); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:10px 8px; font-size:16px; font-weight:700; min-width:48px; font-family:'Roboto Mono',monospace; }
+  .tuner-strings{ display:flex; justify-content:center; gap:4px; flex-wrap:nowrap; margin-bottom:14px; }
+  .tuner-string-btn{ background:var(--surface-2); border:1px solid var(--line); color:var(--text); border-radius:7px; padding:9px 2px; font-size:13px; font-weight:700; flex:1 1 0; min-width:0; letter-spacing:-0.5px; font-family:'Roboto Mono',monospace; }
   .tuner-string-btn:hover{ border-color:var(--gold-dim); color:var(--gold); }
   .tuner-string-btn.active-string{ border-color:var(--gold); color:var(--gold); background:rgba(232,163,61,0.12); }
   .tuner-hint{ color:var(--muted); font-size:11px; line-height:1.5; margin:0 0 6px; }
@@ -862,10 +863,17 @@
     }
     // Median-of-3 filter across recent samples: throws out a single stray
     // reading (e.g. a momentary octave slip) before it ever reaches the
-    // smoothing/needle stage, on top of the EMA smoothing already applied
-    // in updateTunerReadout.
+    // smoothing/needle stage. Also require the buffer to actually fill up
+    // before showing a live reading \u2014 the very first sample or two right
+    // when a string is plucked is often a noisy attack transient that reads
+    // sharp, which used to make the needle throw hard right for an instant.
+    // Holding at the rest position until we have a full window avoids that.
     tunerFreqHistory.push(freq);
     if(tunerFreqHistory.length > 3) tunerFreqHistory.shift();
+    if(tunerFreqHistory.length < 3){
+      updateTunerReadout(-1);
+      return;
+    }
     var sorted = tunerFreqHistory.slice().sort(function(a,b){ return a-b; });
     var medianFreq = sorted[Math.floor(sorted.length / 2)];
     updateTunerReadout(medianFreq);
@@ -879,12 +887,15 @@
     var readoutEl = document.getElementById('tuner-readout-box');
     if(!noteEl || !hzEl || !needleEl) return;
     if(freq === -1 || !isFinite(freq) || freq <= 0){
+      // Rest position: parked on the left in yellow, like a physical clip-on
+      // tuner's needle hanging flat until a string is plucked \u2014 rather than
+      // sitting center or (worse) appearing to start from the sharp/red side.
       noteEl.textContent = '\u2014';
       noteEl.className = 'tuner-gauge-note';
       hzEl.textContent = '\u2014';
-      needleEl.style.transform = 'rotate(0deg)';
-      needleEl.setAttribute('class', 'tuner-needle-line');
-      if(pivotEl) pivotEl.setAttribute('class', 'tuner-needle-line');
+      needleEl.style.transform = 'rotate(-40deg)';
+      needleEl.setAttribute('class', 'tuner-needle-line flat');
+      if(pivotEl) pivotEl.setAttribute('class', 'tuner-needle-line flat');
       if(readoutEl) readoutEl.className = 'tuner-readout';
       tunerInTuneStreak = 0;
       tunerChimePlayed = false;
@@ -2364,7 +2375,7 @@
 
     // Sidebar
     html += '<div class="sidebar' + (state.sidebarOpen ? ' open' : '') + '">';
-    html += '  <div class="brand"><div class="brand-mark"><span class="bolt">\u266A</span><h1>Gig Song Hits</h1></div><p>Your on-stage songbook</p></div>';
+    html += '  <div class="brand"><div><div class="brand-mark"><span class="bolt">\u266A</span><h1>Gig Song Hits</h1></div><p>Your on-stage songbook</p></div><button class="brand-tuner-btn" id="btn-tuner-brand">\uD83C\uDFB8 Tuner</button></div>';
 
     html += buildSearchRowHtml();
     if(state.sidebarView === 'folders'){
@@ -2659,6 +2670,7 @@
 
     if(byId('btn-tuner')) byId('btn-tuner').onclick = openTuner;
     if(byId('btn-tuner-home')) byId('btn-tuner-home').onclick = openTuner;
+    if(byId('btn-tuner-brand')) byId('btn-tuner-brand').onclick = openTuner;
     if(byId('btn-close-tuner')) byId('btn-close-tuner').onclick = closeTuner;
     if(byId('tuner-overlay')) byId('tuner-overlay').onclick = function(e){ if(e.target.id === 'tuner-overlay') closeTuner(); };
     if(byId('btn-tuner-retry')) byId('btn-tuner-retry').onclick = function(){ startTunerListening(); };
