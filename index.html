@@ -718,7 +718,7 @@
   var tunerInTuneStreak = 0;
   var tunerChimePlayed = false;
   var tunerSmoothedCents = null;
-  var tunerDisplayState = 'in-tune';
+  var tunerDisplayState = 'flat';
   var tunerPendingState = null;
   var tunerPendingCount = 0;
   var tunerFreqHistory = [];
@@ -900,7 +900,7 @@
       tunerInTuneStreak = 0;
       tunerChimePlayed = false;
       tunerSmoothedCents = null;
-      tunerDisplayState = 'in-tune';
+      tunerDisplayState = 'flat';
       tunerPendingState = null;
       tunerPendingCount = 0;
       return;
@@ -957,12 +957,13 @@
     if(pivotEl) pivotEl.setAttribute('class', 'tuner-needle-line ' + stateClass);
     if(readoutEl) readoutEl.className = 'tuner-readout ' + stateClass;
 
-    // Confirmation "ding" once the reading holds steady in-tune for a few
-    // consecutive polls (avoids a false beep from a single noisy sample),
+    // Confirmation "ding" only once the reading holds truly steady in-tune
+    // for a solid stretch (not just a quick pass-through while tuning up from
+    // way off) \u2014 avoids a false beep from a momentary/noisy green blip,
     // mirroring how a physical clip-on tuner lights up/rings when locked in.
     if(stateClass === 'in-tune'){
       tunerInTuneStreak++;
-      if(tunerInTuneStreak >= 3 && !tunerChimePlayed){
+      if(tunerInTuneStreak >= 7 && !tunerChimePlayed){
         tunerChimePlayed = true;
         playInTuneChime();
       }
