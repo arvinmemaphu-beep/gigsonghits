@@ -196,7 +196,7 @@
   .tuner-hz{ font-size:14px; color:var(--muted); letter-spacing:1px; font-weight:600; }
   .tuner-meter{ width:100%; height:14px; background:var(--bg); border-radius:7px; position:relative; overflow:hidden; margin-top:8px; border:1px solid var(--line); }
   .tuner-meter .center-mark{ position:absolute; left:50%; top:0; bottom:0; width:2px; background:var(--line); transform:translateX(-1px); }
-  .tuner-meter .needle{ position:absolute; top:0; bottom:0; width:6px; border-radius:3px; background:var(--muted); transform:translateX(-3px); left:50%; transition: left 0.18s ease-out, background 0.2s linear; }
+  .tuner-meter .needle{ position:absolute; top:0; bottom:0; width:6px; border-radius:3px; background:var(--muted); transform:translateX(-3px); left:50%; transition: left 0.28s ease-out, background 0.25s linear; }
   .tuner-meter .needle.in-tune{ background:#3fd66b; }
   .tuner-meter .needle.flat{ background:#f2c94c; }
   .tuner-meter .needle.sharp{ background:#e5484d; }
@@ -715,6 +715,9 @@
   var tunerInTuneStreak = 0;
   var tunerChimePlayed = false;
   var tunerSmoothedCents = null;
+  var tunerDisplayState = 'in-tune';
+  var tunerPendingState = null;
+  var tunerPendingCount = 0;
 
   function frequencyToNote(frequency){
     var noteNum = 12 * (Math.log(frequency / 440) / Math.LN2);
@@ -855,6 +858,9 @@
       tunerInTuneStreak = 0;
       tunerChimePlayed = false;
       tunerSmoothedCents = null;
+      tunerDisplayState = 'in-tune';
+      tunerPendingState = null;
+      tunerPendingCount = 0;
       return;
     }
     var nearest = nearestTunerString(freq);
@@ -864,13 +870,30 @@
     // gradually toward the pitch instead of jumping around with every noisy
     // sample \u2014 makes it clear and easy to follow whether you're flat or sharp.
     if(tunerSmoothedCents === null) tunerSmoothedCents = rawCents;
-    else tunerSmoothedCents += (rawCents - tunerSmoothedCents) * 0.3;
+    else tunerSmoothedCents += (rawCents - tunerSmoothedCents) * 0.15;
     var cents = Math.round(tunerSmoothedCents);
     var displayName = nearest ? nearest.name.replace(/[0-9]/,'') : note.name;
     var IN_TUNE_WINDOW = 6; // +/- cents considered "in tune"
-    var stateClass = 'in-tune';
-    if(cents > IN_TUNE_WINDOW) stateClass = 'sharp';
-    else if(cents < -IN_TUNE_WINDOW) stateClass = 'flat';
+    var rawStateClass = 'in-tune';
+    if(cents > IN_TUNE_WINDOW) rawStateClass = 'sharp';
+    else if(cents < -IN_TUNE_WINDOW) rawStateClass = 'flat';
+    // Require the new classification to hold for a couple of consecutive
+    // polls before actually switching color \u2014 this is what keeps a single
+    // noisy sample from flashing red/yellow for an instant before settling
+    // back to green, giving a steady, non-jittery readout.
+    if(rawStateClass === tunerDisplayState){
+      tunerPendingState = null;
+      tunerPendingCount = 0;
+    } else {
+      if(tunerPendingState === rawStateClass) tunerPendingCount++;
+      else { tunerPendingState = rawStateClass; tunerPendingCount = 1; }
+      if(tunerPendingCount >= 2){
+        tunerDisplayState = rawStateClass;
+        tunerPendingState = null;
+        tunerPendingCount = 0;
+      }
+    }
+    var stateClass = tunerDisplayState;
     noteEl.textContent = displayName;
     noteEl.className = 'tuner-note ' + stateClass;
     hzEl.textContent = freq.toFixed(1) + ' Hz';
