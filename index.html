@@ -196,7 +196,7 @@
   .tuner-hz{ font-size:14px; color:var(--muted); letter-spacing:1px; font-weight:600; }
   .tuner-meter{ width:100%; height:14px; background:var(--bg); border-radius:7px; position:relative; overflow:hidden; margin-top:8px; border:1px solid var(--line); }
   .tuner-meter .center-mark{ position:absolute; left:50%; top:0; bottom:0; width:2px; background:var(--line); transform:translateX(-1px); }
-  .tuner-meter .needle{ position:absolute; top:0; bottom:0; width:6px; border-radius:3px; background:var(--muted); transform:translateX(-3px); left:50%; transition: left 0.08s linear, background 0.15s linear; }
+  .tuner-meter .needle{ position:absolute; top:0; bottom:0; width:6px; border-radius:3px; background:var(--muted); transform:translateX(-3px); left:50%; transition: left 0.18s ease-out, background 0.2s linear; }
   .tuner-meter .needle.in-tune{ background:#3fd66b; }
   .tuner-meter .needle.flat{ background:#f2c94c; }
   .tuner-meter .needle.sharp{ background:#e5484d; }
@@ -714,6 +714,7 @@
   var tunerRefOscTimeout = null;
   var tunerInTuneStreak = 0;
   var tunerChimePlayed = false;
+  var tunerSmoothedCents = null;
 
   function frequencyToNote(frequency){
     var noteNum = 12 * (Math.log(frequency / 440) / Math.LN2);
@@ -780,6 +781,7 @@
     state.tunerOpen = true;
     state.tunerError = null;
     render();
+    startTunerListening();
   }
 
   function closeTuner(){
@@ -852,11 +854,18 @@
       if(readoutEl) readoutEl.className = 'tuner-readout';
       tunerInTuneStreak = 0;
       tunerChimePlayed = false;
+      tunerSmoothedCents = null;
       return;
     }
     var nearest = nearestTunerString(freq);
     var note = frequencyToNote(freq);
-    var cents = nearest ? Math.floor(1200 * Math.log(freq / nearest.freq) / Math.LN2) : note.cents;
+    var rawCents = nearest ? Math.floor(1200 * Math.log(freq / nearest.freq) / Math.LN2) : note.cents;
+    // Smooth the reading (exponential moving average) so the needle glides
+    // gradually toward the pitch instead of jumping around with every noisy
+    // sample \u2014 makes it clear and easy to follow whether you're flat or sharp.
+    if(tunerSmoothedCents === null) tunerSmoothedCents = rawCents;
+    else tunerSmoothedCents += (rawCents - tunerSmoothedCents) * 0.3;
+    var cents = Math.round(tunerSmoothedCents);
     var displayName = nearest ? nearest.name.replace(/[0-9]/,'') : note.name;
     var IN_TUNE_WINDOW = 6; // +/- cents considered "in tune"
     var stateClass = 'in-tune';
@@ -921,7 +930,9 @@
   }
 
   // Short two-note "ding" played once a reading has held steady in-tune,
-  // like the confirmation beep/light on a physical clip-on tuner.
+  // like the confirmation beep/light on a physical clip-on tuner. Louder
+  // and fuller than the reference tone so it clearly stands out as the
+  // "you're in tune now" signal.
   function playInTuneChime(){
     try{
       var AC = window.AudioContext || window.webkitAudioContext;
@@ -937,10 +948,10 @@
         osc.connect(gain);
         gain.connect(ctx.destination);
         var t = pair[1];
-        gain.gain.exponentialRampToValueAtTime(0.12, t + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+        gain.gain.exponentialRampToValueAtTime(0.32, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
         osc.start(t);
-        osc.stop(t + 0.36);
+        osc.stop(t + 0.51);
       });
     }catch(e){}
   }
@@ -2324,7 +2335,6 @@
     html += '<div class="main">';
     html += '  <div class="toolbar">';
     html += '    <button class="mobile-toggle" id="btn-toggle-sidebar">\u2630</button>';
-    html += '<button class="icon-btn" id="btn-tuner" style="background:var(--gold);color:#181410;border-color:var(--gold);font-weight:700;">\uD83C\uDFB8 Tuner</button>';
     if(song){
       html += '<div class="tool-group"><span class="label-sm">Key</span>';
       html += '<button class="tool-btn" id="btn-key-down">\u2212</button>';
@@ -2345,6 +2355,7 @@
       html += '<div class="tool-group"><button class="tool-btn wide' + (state.mode === 'edit' ? ' on' : '') + '" id="btn-toggle-mode">' + (state.mode === 'edit' ? 'DONE' : 'EDIT') + '</button></div>';
     }
     html += '<div class="spacer"></div>';
+    html += '<button class="icon-btn" id="btn-tuner" style="background:var(--gold);color:#181410;border-color:var(--gold);font-weight:700;">\uD83C\uDFB8 Tuner</button>';
     html += '<button class="icon-btn" id="btn-import-top">Import</button>';
     html += '<button class="icon-btn" id="btn-import-url-top">\uD83D\uDD17 URL</button>';
     if(song){
@@ -2542,12 +2553,14 @@
         html += '<div class="tuner-note" id="tuner-note-display">\u2014</div>';
         html += '<div class="tuner-hz" id="tuner-hz-display">\u2014</div>';
         html += '<div class="tuner-meter-row"><span class="tuner-meter-endlabel">\u25C0 MABABA</span><div class="tuner-meter"><div class="center-mark"></div><div class="needle" id="tuner-needle"></div></div><span class="tuner-meter-endlabel">MATAAS \u25B6</span></div>';
+      } else if(state.tunerError){
+        html += '<p class="tuner-idle">Bigyan ng permission ang mikropono para awtomatikong ma-detect ang tono.</p>';
+        html += '<button class="tuner-listen-btn" id="btn-tuner-retry">\uD83C\uDF99 Subukang Muli</button>';
       } else {
-        html += '<p class="tuner-idle">Pindutin ang "Simulan" at bigyan ng mic permission para awtomatikong ma-detect ang tono. Pwede rin manual gamit ang reference tone sa baba.</p>';
+        html += '<p class="tuner-idle">Kinukuha ang mikropono\u2026</p>';
       }
       html += '</div>';
       if(state.tunerError) html += '<p style="color:var(--danger);font-size:12px;margin:-6px 0 12px;">' + escapeHtml(state.tunerError) + '</p>';
-      html += '<button class="tuner-listen-btn' + (state.tunerListening ? ' listening' : '') + '" id="btn-tuner-listen">' + (state.tunerListening ? '\u23F9 Ihinto' : '\uD83C\uDF99 Simulan ang Pakikinig') + '</button>';
       html += '<p class="tuner-hint">O pindutin ang isang kwerdas para marinig ang reference tone:</p>';
       html += '<div class="tuner-strings">';
       tuningList.forEach(function(s){
@@ -2586,10 +2599,7 @@
     if(byId('btn-tuner-home')) byId('btn-tuner-home').onclick = openTuner;
     if(byId('btn-close-tuner')) byId('btn-close-tuner').onclick = closeTuner;
     if(byId('tuner-overlay')) byId('tuner-overlay').onclick = function(e){ if(e.target.id === 'tuner-overlay') closeTuner(); };
-    if(byId('btn-tuner-listen')) byId('btn-tuner-listen').onclick = function(){
-      if(state.tunerListening){ stopTunerListening(); render(); }
-      else { startTunerListening(); }
-    };
+    if(byId('btn-tuner-retry')) byId('btn-tuner-retry').onclick = function(){ startTunerListening(); };
     document.querySelectorAll('.tuner-inst-toggle button').forEach(function(btn){
       btn.onclick = function(){ setTunerInstrument(btn.getAttribute('data-inst')); };
     });
