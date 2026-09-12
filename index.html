@@ -908,6 +908,13 @@
     var nearest = nearestTunerString(freq);
     var note = frequencyToNote(freq);
     var rawCents = nearest ? Math.floor(1200 * Math.log(freq / nearest.freq) / Math.LN2) : note.cents;
+    // Reject implausible single-poll jumps (typically an octave/harmonic
+    // misread flaring up briefly, e.g. from a ringing overtone) instead of
+    // letting them yank an already-settled reading straight to the edge of
+    // red. A real pitch change (turning a tuning peg) moves gradually poll
+    // to poll, so a huge jump in one 80ms tick is almost always a glitch,
+    // not a real "over-tuned" swing \u2014 keep the last good reading instead.
+    if(tunerSmoothedCents !== null && Math.abs(rawCents - tunerSmoothedCents) > 35) return;
     // Smooth the reading (exponential moving average) so the needle glides
     // gradually toward the pitch instead of jumping around with every noisy
     // sample \u2014 makes it clear and easy to follow whether you're flat or sharp.
@@ -922,14 +929,18 @@
     // Require the new classification to hold for a couple of consecutive
     // polls before actually switching color \u2014 this is what keeps a single
     // noisy sample from flashing red/yellow for an instant before settling
-    // back to green, giving a steady, non-jittery readout.
+    // back to green, giving a steady, non-jittery readout. Leaving green
+    // specifically needs more confirmation than entering it, so a locked-in
+    // perfect tune doesn't get knocked out by a brief blip \u2014 only a real,
+    // sustained drift (actually turning out of tune) will move it.
+    var pollsNeededToSwitch = (tunerDisplayState === 'in-tune') ? 4 : 2;
     if(rawStateClass === tunerDisplayState){
       tunerPendingState = null;
       tunerPendingCount = 0;
     } else {
       if(tunerPendingState === rawStateClass) tunerPendingCount++;
       else { tunerPendingState = rawStateClass; tunerPendingCount = 1; }
-      if(tunerPendingCount >= 2){
+      if(tunerPendingCount >= pollsNeededToSwitch){
         tunerDisplayState = rawStateClass;
         tunerPendingState = null;
         tunerPendingCount = 0;
