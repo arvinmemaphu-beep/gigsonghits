@@ -182,24 +182,26 @@
   .tuner-inst-toggle{ display:flex; gap:6px; background:var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:4px; margin-bottom:16px; }
   .tuner-inst-toggle button{ flex:1; background:transparent; border:none; color:var(--muted); padding:9px 4px; border-radius:6px; font-size:13px; letter-spacing:1px; text-transform:uppercase; font-weight:600; }
   .tuner-inst-toggle button.on{ background:var(--gold); color:#181410; }
-  .tuner-readout{ background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:22px 12px 20px; margin-bottom:14px; min-height:150px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; }
-  .tuner-note{ font-size:76px; font-weight:800; color:var(--gold); line-height:1; font-family:'Roboto Mono',monospace; }
-  .tuner-note.flat{ color:#f2c94c; }
-  .tuner-note.sharp{ color:#e5484d; }
-  .tuner-note.in-tune{ color:#3fd66b; }
-  .tuner-note.in-tune{ animation: tunerPulse 0.6s ease-in-out; }
-  @keyframes tunerPulse{ 0%{ transform:scale(1); } 40%{ transform:scale(1.12); } 100%{ transform:scale(1); } }
-  .tuner-check{ font-size:13px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#3fd66b; height:16px; }
-  .tuner-meter-row{ display:flex; align-items:center; gap:8px; width:100%; margin-top:6px; }
-  .tuner-meter-endlabel{ font-size:10px; letter-spacing:1px; color:var(--muted); text-transform:uppercase; white-space:nowrap; flex:none; }
-  .tuner-meter-row .tuner-meter{ width:auto; flex:1; margin-top:0; }
-  .tuner-hz{ font-size:14px; color:var(--muted); letter-spacing:1px; font-weight:600; }
-  .tuner-meter{ width:100%; height:14px; background:var(--bg); border-radius:7px; position:relative; overflow:hidden; margin-top:8px; border:1px solid var(--line); }
-  .tuner-meter .center-mark{ position:absolute; left:50%; top:0; bottom:0; width:2px; background:var(--line); transform:translateX(-1px); }
-  .tuner-meter .needle{ position:absolute; top:0; bottom:0; width:6px; border-radius:3px; background:var(--muted); transform:translateX(-3px); left:50%; transition: left 0.28s ease-out, background 0.25s linear; }
-  .tuner-meter .needle.in-tune{ background:#3fd66b; }
-  .tuner-meter .needle.flat{ background:#f2c94c; }
-  .tuner-meter .needle.sharp{ background:#e5484d; }
+  .tuner-readout{ background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:18px 12px 14px; margin-bottom:14px; min-height:190px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; }
+  .tuner-gauge-wrap{ position:relative; width:240px; max-width:100%; margin:0 auto; }
+  .tuner-gauge-svg{ width:100%; height:auto; display:block; overflow:visible; }
+  .tuner-gauge-note{ position:absolute; left:50%; bottom:-6px; transform:translateX(-50%); font-size:52px; font-weight:800; color:var(--gold); line-height:1; font-family:'Roboto Mono',monospace; }
+  .tuner-gauge-note.flat{ color:#f2c94c; }
+  .tuner-gauge-note.sharp{ color:#e5484d; }
+  .tuner-gauge-note.in-tune{ color:#3fd66b; }
+  .tuner-gauge-note.in-tune{ animation: tunerPulse 0.6s ease-in-out; }
+  @keyframes tunerPulse{ 0%{ transform:translateX(-50%) scale(1); } 40%{ transform:translateX(-50%) scale(1.12); } 100%{ transform:translateX(-50%) scale(1); } }
+  .tuner-needle-line{ stroke:var(--muted); transition: transform 0.28s ease-out, stroke 0.25s linear; transform-origin: 110px 110px; }
+  .tuner-needle-line.in-tune{ stroke:#3fd66b; }
+  .tuner-needle-line.flat{ stroke:#f2c94c; }
+  .tuner-needle-line.sharp{ stroke:#e5484d; }
+  circle.tuner-needle-line{ fill:var(--muted); transition: fill 0.25s linear; }
+  circle.tuner-needle-line.in-tune{ fill:#3fd66b; }
+  circle.tuner-needle-line.flat{ fill:#f2c94c; }
+  circle.tuner-needle-line.sharp{ fill:#e5484d; }
+  .tuner-gauge-labels{ display:flex; justify-content:space-between; width:240px; max-width:100%; margin:2px auto 0; }
+  .tuner-gauge-labels span{ font-size:10px; letter-spacing:1px; color:var(--muted); text-transform:uppercase; }
+  .tuner-hz{ font-size:14px; color:var(--muted); letter-spacing:1px; font-weight:600; margin-top:6px; }
   .tuner-readout.in-tune{ box-shadow: 0 0 0 2px #3fd66b inset; }
   .tuner-readout.flat{ box-shadow: 0 0 0 2px #f2c94c inset; }
   .tuner-readout.sharp{ box-shadow: 0 0 0 2px #e5484d inset; }
@@ -718,6 +720,7 @@
   var tunerDisplayState = 'in-tune';
   var tunerPendingState = null;
   var tunerPendingCount = 0;
+  var tunerFreqHistory = [];
 
   function frequencyToNote(frequency){
     var noteNum = 12 * (Math.log(frequency / 440) / Math.LN2);
@@ -729,8 +732,9 @@
     return { name: name, octave: octave, cents: cents };
   }
 
-  // Autocorrelation-based pitch detector: finds the best-matching lag in the
-  // waveform to estimate fundamental frequency. Returns -1 if no clear pitch.
+  // YIN pitch detector \u2014 the algorithm used by most dedicated tuner apps.
+  // It's far more resistant to octave errors and noise than plain autocorrelation,
+  // which is what was causing the needle to jump around unpredictably before.
   function detectPitch(buffer, sampleRate){
     var size = buffer.length;
     var rms = 0;
@@ -738,36 +742,47 @@
     rms = Math.sqrt(rms / size);
     if(rms < 0.01) return -1; // too quiet / silence
 
-    var trimStart = 0, trimEnd = size - 1;
-    var threshold = 0.2;
-    while(trimStart < size/2 && Math.abs(buffer[trimStart]) < threshold) trimStart++;
-    while(trimEnd > size/2 && Math.abs(buffer[trimEnd]) < threshold) trimEnd--;
-    var trimmed = buffer.slice(trimStart, trimEnd);
-    var n = trimmed.length;
-    if(n < 512) return -1;
+    var halfSize = Math.floor(size / 2);
+    // Only need to search tau values covering ~50Hz-1000Hz (guitar/ukulele range
+    // plus margin) to keep this fast enough to run several times a second.
+    var maxTau = Math.min(halfSize - 1, Math.round(sampleRate / 50));
+    var yinBuf = new Float32Array(maxTau + 1);
+    var runningSum = 0;
+    yinBuf[0] = 1;
+    for(var tau=1; tau<=maxTau; tau++){
+      var sum = 0;
+      for(var j=0; j<halfSize; j++){
+        var delta = buffer[j] - buffer[j+tau];
+        sum += delta * delta;
+      }
+      runningSum += sum;
+      yinBuf[tau] = runningSum === 0 ? 1 : sum * tau / runningSum;
+    }
 
-    // Only search lags within the frequency range instruments actually use
-    // (~55Hz-1000Hz covers guitar/ukulele plus a margin) to keep this fast enough
-    // to run several times a second.
-    var maxLag = Math.min(n - 1, Math.round(sampleRate / 55));
-    var c = new Array(maxLag + 1).fill(0);
-    for(var lag=0; lag<=maxLag; lag++){
-      for(var j=0; j<n-lag; j++){ c[lag] += trimmed[j] * trimmed[j+lag]; }
+    var threshold = 0.15;
+    var tauEstimate = -1;
+    for(var t=2; t<=maxTau; t++){
+      if(yinBuf[t] < threshold){
+        while(t+1 <= maxTau && yinBuf[t+1] < yinBuf[t]) t++;
+        tauEstimate = t;
+        break;
+      }
     }
-    var d = 0;
-    while(d < maxLag && c[d] > c[d+1]) d++;
-    var maxVal = -1, maxPos = -1;
-    for(var k=d; k<=maxLag; k++){
-      if(c[k] > maxVal){ maxVal = c[k]; maxPos = k; }
+    if(tauEstimate === -1) return -1; // no clear periodicity found
+
+    // Parabolic interpolation around the minimum for sub-sample precision
+    var x0 = (tauEstimate < 1) ? tauEstimate : tauEstimate - 1;
+    var x2 = (tauEstimate + 1 <= maxTau) ? tauEstimate + 1 : tauEstimate;
+    var betterTau;
+    if(x0 === tauEstimate) betterTau = (yinBuf[tauEstimate] <= yinBuf[x2]) ? tauEstimate : x2;
+    else if(x2 === tauEstimate) betterTau = (yinBuf[tauEstimate] <= yinBuf[x0]) ? tauEstimate : x0;
+    else{
+      var s0 = yinBuf[x0], s1 = yinBuf[tauEstimate], s2 = yinBuf[x2];
+      var denom = (2 * (2*s1 - s2 - s0));
+      betterTau = denom !== 0 ? tauEstimate + (s2 - s0) / denom : tauEstimate;
     }
-    if(maxPos <= 0) return -1;
-    var T0 = maxPos;
-    // Parabolic interpolation around the peak for sub-sample precision
-    var x1 = c[T0-1] || c[T0], x2 = c[T0], x3 = c[T0+1] || c[T0];
-    var a = (x1 + x3 - 2*x2) / 2;
-    var b = (x3 - x1) / 2;
-    if(a !== 0) T0 = T0 - b/(2*a);
-    return sampleRate / T0;
+    if(betterTau <= 0) return -1;
+    return sampleRate / betterTau;
   }
 
   function nearestTunerString(frequency){
@@ -807,6 +822,7 @@
     tunerSourceNode = null;
     tunerInTuneStreak = 0;
     tunerChimePlayed = false;
+    tunerFreqHistory = [];
     state.tunerListening = false;
   }
 
@@ -819,7 +835,7 @@
       var AC = window.AudioContext || window.webkitAudioContext;
       tunerAudioCtx = new AC();
       tunerAnalyser = tunerAudioCtx.createAnalyser();
-      tunerAnalyser.fftSize = 2048;
+      tunerAnalyser.fftSize = 4096;
       tunerDataBuffer = new Float32Array(tunerAnalyser.fftSize);
       tunerSourceNode = tunerAudioCtx.createMediaStreamSource(tunerStream);
       tunerSourceNode.connect(tunerAnalyser);
@@ -839,21 +855,36 @@
     if(!state.tunerListening || !tunerAnalyser) return;
     tunerAnalyser.getFloatTimeDomainData(tunerDataBuffer);
     var freq = detectPitch(tunerDataBuffer, tunerAudioCtx.sampleRate);
-    updateTunerReadout(freq);
+    if(freq === -1){
+      tunerFreqHistory = [];
+      updateTunerReadout(-1);
+      return;
+    }
+    // Median-of-3 filter across recent samples: throws out a single stray
+    // reading (e.g. a momentary octave slip) before it ever reaches the
+    // smoothing/needle stage, on top of the EMA smoothing already applied
+    // in updateTunerReadout.
+    tunerFreqHistory.push(freq);
+    if(tunerFreqHistory.length > 3) tunerFreqHistory.shift();
+    var sorted = tunerFreqHistory.slice().sort(function(a,b){ return a-b; });
+    var medianFreq = sorted[Math.floor(sorted.length / 2)];
+    updateTunerReadout(medianFreq);
   }
 
   function updateTunerReadout(freq){
     var noteEl = document.getElementById('tuner-note-display');
     var hzEl = document.getElementById('tuner-hz-display');
-    var needleEl = document.getElementById('tuner-needle');
+    var needleEl = document.getElementById('tuner-needle-line');
+    var pivotEl = document.getElementById('tuner-needle-pivot');
     var readoutEl = document.getElementById('tuner-readout-box');
     if(!noteEl || !hzEl || !needleEl) return;
     if(freq === -1 || !isFinite(freq) || freq <= 0){
       noteEl.textContent = '\u2014';
-      noteEl.className = 'tuner-note';
+      noteEl.className = 'tuner-gauge-note';
       hzEl.textContent = '\u2014';
-      needleEl.style.left = '50%';
-      needleEl.className = 'needle';
+      needleEl.style.transform = 'rotate(0deg)';
+      needleEl.setAttribute('class', 'tuner-needle-line');
+      if(pivotEl) pivotEl.setAttribute('class', 'tuner-needle-line');
       if(readoutEl) readoutEl.className = 'tuner-readout';
       tunerInTuneStreak = 0;
       tunerChimePlayed = false;
@@ -895,11 +926,13 @@
     }
     var stateClass = tunerDisplayState;
     noteEl.textContent = displayName;
-    noteEl.className = 'tuner-note ' + stateClass;
+    noteEl.className = 'tuner-gauge-note ' + stateClass;
     hzEl.textContent = freq.toFixed(1) + ' Hz';
     var clamped = Math.max(-50, Math.min(50, cents));
-    needleEl.style.left = (50 + clamped) + '%';
-    needleEl.className = 'needle ' + stateClass;
+    var angleDeg = clamped * 1.2; // maps \u00b150 cents to \u00b160\u00b0 sweep
+    needleEl.style.transform = 'rotate(' + angleDeg + 'deg)';
+    needleEl.setAttribute('class', 'tuner-needle-line ' + stateClass);
+    if(pivotEl) pivotEl.setAttribute('class', 'tuner-needle-line ' + stateClass);
     if(readoutEl) readoutEl.className = 'tuner-readout ' + stateClass;
 
     // Confirmation "ding" once the reading holds steady in-tune for a few
@@ -2573,9 +2606,15 @@
       html += '</div>';
       html += '<div class="tuner-readout" id="tuner-readout-box">';
       if(state.tunerListening){
-        html += '<div class="tuner-note" id="tuner-note-display">\u2014</div>';
+        html += '<div class="tuner-gauge-wrap"><svg viewBox="0 0 220 130" class="tuner-gauge-svg" aria-hidden="true">';
+        html += '<path d="M32.06,65.00 A90,90 0 0,1 98.72,20.71" stroke="#f2c94c" stroke-width="14" fill="none" stroke-linecap="round"/>';
+        html += '<path d="M98.72,20.71 A90,90 0 0,1 121.28,20.71" stroke="#3fd66b" stroke-width="14" fill="none" stroke-linecap="round"/>';
+        html += '<path d="M121.28,20.71 A90,90 0 0,1 187.94,65.00" stroke="#e5484d" stroke-width="14" fill="none" stroke-linecap="round"/>';
+        html += '<line x1="110" y1="110" x2="110" y2="26" class="tuner-needle-line" id="tuner-needle-line" stroke-width="4" stroke-linecap="round"/>';
+        html += '<circle cx="110" cy="110" r="7" class="tuner-needle-line" id="tuner-needle-pivot"/>';
+        html += '</svg><div class="tuner-gauge-note" id="tuner-note-display">\u2014</div></div>';
+        html += '<div class="tuner-gauge-labels"><span>\u25C0 MABABA</span><span>MATAAS \u25B6</span></div>';
         html += '<div class="tuner-hz" id="tuner-hz-display">\u2014</div>';
-        html += '<div class="tuner-meter-row"><span class="tuner-meter-endlabel">\u25C0 MABABA</span><div class="tuner-meter"><div class="center-mark"></div><div class="needle" id="tuner-needle"></div></div><span class="tuner-meter-endlabel">MATAAS \u25B6</span></div>';
       } else if(state.tunerError){
         html += '<p class="tuner-idle">Bigyan ng permission ang mikropono para awtomatikong ma-detect ang tono.</p>';
         html += '<button class="tuner-listen-btn" id="btn-tuner-retry">\uD83C\uDF99 Subukang Muli</button>';
