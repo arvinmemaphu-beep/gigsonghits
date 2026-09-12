@@ -718,6 +718,7 @@
   var tunerInTuneStreak = 0;
   var tunerChimePlayed = false;
   var tunerSmoothedCents = null;
+  var tunerPendingOutlierCents = null;
   var tunerDisplayState = 'flat';
   var tunerPendingState = null;
   var tunerPendingCount = 0;
@@ -900,6 +901,7 @@
       tunerInTuneStreak = 0;
       tunerChimePlayed = false;
       tunerSmoothedCents = null;
+      tunerPendingOutlierCents = null;
       tunerDisplayState = 'flat';
       tunerPendingState = null;
       tunerPendingCount = 0;
@@ -908,13 +910,24 @@
     var nearest = nearestTunerString(freq);
     var note = frequencyToNote(freq);
     var rawCents = nearest ? Math.floor(1200 * Math.log(freq / nearest.freq) / Math.LN2) : note.cents;
-    // Reject implausible single-poll jumps (typically an octave/harmonic
-    // misread flaring up briefly, e.g. from a ringing overtone) instead of
-    // letting them yank an already-settled reading straight to the edge of
-    // red. A real pitch change (turning a tuning peg) moves gradually poll
-    // to poll, so a huge jump in one 80ms tick is almost always a glitch,
-    // not a real "over-tuned" swing \u2014 keep the last good reading instead.
-    if(tunerSmoothedCents !== null && Math.abs(rawCents - tunerSmoothedCents) > 35) return;
+    // A single big jump from the last smoothed reading could be a real,
+    // fast pitch change (turning a tuning peg on a very out-of-tune string)
+    // or a one-off octave/harmonic misread \u2014 those look identical on their
+    // own. So instead of blindly accepting or rejecting it, wait one more
+    // poll: if the NEXT reading confirms roughly the same jump, it's real
+    // movement and we snap to it immediately (so tuning a way-off string
+    // still tracks quickly); if it doesn't, it was a glitch and we drop it.
+    if(tunerSmoothedCents !== null && Math.abs(rawCents - tunerSmoothedCents) > 35){
+      if(tunerPendingOutlierCents !== null && Math.abs(rawCents - tunerPendingOutlierCents) < 15){
+        tunerSmoothedCents = rawCents; // confirmed \u2014 accept the jump right away
+        tunerPendingOutlierCents = null;
+      } else {
+        tunerPendingOutlierCents = rawCents;
+        return;
+      }
+    } else {
+      tunerPendingOutlierCents = null;
+    }
     // Smooth the reading (exponential moving average) so the needle glides
     // gradually toward the pitch instead of jumping around with every noisy
     // sample \u2014 makes it clear and easy to follow whether you're flat or sharp.
