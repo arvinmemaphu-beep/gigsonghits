@@ -734,6 +734,23 @@
     return { name: name, octave: octave, cents: cents };
   }
 
+  // Gentle low-pass filter run over the raw mic buffer before pitch detection.
+  // Real strings aren't perfectly harmonic — their overtones sit a little
+  // sharp of the true harmonic series (especially wound strings), and that
+  // extra high-frequency content can nudge YIN's difference-function minimum
+  // slightly early, which is what reads as "sharp even when exactly in tune."
+  // Cutting content above ~1000Hz (well above the guitar/ukulele fundamental
+  // range) removes most of that bias without touching the note being played.
+  function lowPassBuffer(buffer, sampleRate, cutoffHz){
+    var rc = 1 / (2 * Math.PI * cutoffHz);
+    var dt = 1 / sampleRate;
+    var alpha = dt / (rc + dt);
+    var out = new Float32Array(buffer.length);
+    out[0] = buffer[0];
+    for(var i=1; i<buffer.length; i++){ out[i] = out[i-1] + alpha * (buffer[i] - out[i-1]); }
+    return out;
+  }
+
   // YIN pitch detector \u2014 the algorithm used by most dedicated tuner apps.
   // It's far more resistant to octave errors and noise than plain autocorrelation,
   // which is what was causing the needle to jump around unpredictably before.
@@ -744,6 +761,7 @@
     rms = Math.sqrt(rms / size);
     if(rms < 0.01) return -1; // too quiet / silence
 
+    buffer = lowPassBuffer(buffer, sampleRate, 1000);
     var halfSize = Math.floor(size / 2);
     // Only need to search tau values covering ~50Hz-1000Hz (guitar/ukulele range
     // plus margin) to keep this fast enough to run several times a second.
@@ -862,16 +880,19 @@
       updateTunerReadout(-1);
       return;
     }
-    // Median-of-3 filter across recent samples: throws out a single stray
-    // reading (e.g. a momentary octave slip) before it ever reaches the
-    // smoothing/needle stage. Also require the buffer to actually fill up
-    // before showing a live reading \u2014 the very first sample or two right
-    // when a string is plucked is often a noisy attack transient that reads
-    // sharp, which used to make the needle throw hard right for an instant.
-    // Holding at the rest position until we have a full window avoids that.
+    // Median-of-5 filter across recent samples: throws out stray readings
+    // (e.g. a momentary octave slip, or a plucked-string attack transient
+    // that briefly reads sharp) before they ever reach the smoothing/needle
+    // stage. Widened from 3 to 5 samples for extra resistance to exactly
+    // that "reads sharp for a moment even though it's actually in tune"
+    // pattern — costs a little more delay to fill (~400ms at this poll
+    // rate) but a tuner reading doesn't need to be instant, just steady.
+    // Also require the buffer to actually fill up before showing a live
+    // reading — holding at the rest position until then avoids the needle
+    // throwing hard right for an instant on the very first sample or two.
     tunerFreqHistory.push(freq);
-    if(tunerFreqHistory.length > 3) tunerFreqHistory.shift();
-    if(tunerFreqHistory.length < 3){
+    if(tunerFreqHistory.length > 5) tunerFreqHistory.shift();
+    if(tunerFreqHistory.length < 5){
       updateTunerReadout(-1);
       return;
     }
