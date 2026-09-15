@@ -627,7 +627,7 @@
     var n = parseInt(bpmVal, 10);
     if(!n || isNaN(n) || n <= 0) return null;
     var speed = Math.round(n / 20);
-    return Math.max(1, Math.min(10, speed));
+    return Math.max(1, Math.min(15, speed));
   }
 
   var SAMPLE_BODY = "ATE\nby memaphu\n\nIntro: G - Bm7 - Em - Am7 - F - D7sus\n\nG          Bm7             Em      Am7                 F              D7sus\nTe, anong nangyayari? Bat tila tulala, at di ka mapakali?\nG          Bm7             Em      Am7                 F              D7sus\nTe, bat di ka magsabi, Kung may problema, sa aki'y tumabi.\n\nKORO\nC                          G        C                           G\nTenga koy nakaabang, Pwedeng ibulong, mo lang,\nBalikat koy nakaabang, yumakap ka, ang uloy isandal.\nEm                          Am7        F           D7sus\nWag kang mahihiya. O maiilang, ako ay andito lang\nG          Bm7             Em      Am7                 F              D7sus\nTe, kung nahihirapan, sayo ako ay laging, handang pumasan.\nG          Bm7             Em      Am7                 F              D7sus\nEy, wag ka ng malumbay, di bagay sayo, ang salubong na kilay.\n\n(Ulitin ang KORO)\n\nAdlib 2x: G - Bm7 - Em - Am7 - F - D7sus\n\n(Ulitin ang KORO)\n\nG          Bm7             Em      Am7                 F              D7sus\nGanyan nga, ngumiti wag humikbi, kunting relaks naman, maniwala at magtiwala.\nG          Bm7             Em      Am7                 F              D7sus\nDiba, lahat may problema, lahat ay makakaya, bastat manalig at wag mawalan ng pag asa.\n\n(Ulitin ang KORO 1x)\n(Adlib - koro)\n(Ulitin koro)";
@@ -2232,7 +2232,7 @@
         scrollAnimId = requestAnimationFrame(step);
         return;
       }
-      var pxPerSec = 4 + state.scrollSpeed * 4; // gentler range: ~8px/s to ~44px/s
+      var pxPerSec = 2 + state.scrollSpeed * state.scrollSpeed * 0.6; // wide range: ~2.6px/s (super slow) to ~137px/s (super fast, max 15)
       pos += pxPerSec * dt;
       el.scrollTop = pos;
       if(el.scrollTop + el.clientHeight >= el.scrollHeight - 2){
@@ -2437,7 +2437,7 @@
 
       html += '<div class="tool-group"><button class="tool-btn wide' + (state.autoScroll ? ' on' : '') + '" id="btn-autoscroll">' + (state.countdownRemaining != null ? '\u23F1 ' + state.countdownRemaining + '\u2026' : (state.autoScroll ? '\u23F8 SCROLLING' : '\u25B6 SCROLL')) + '</button>';
       html += '<span class="label-sm" style="margin-left:6px;">Speed</span>';
-      html += '<input class="speed-slider" type="range" min="1" max="10" value="' + state.scrollSpeed + '" id="range-speed" />';
+      html += '<input class="speed-slider" type="range" min="1" max="15" value="' + state.scrollSpeed + '" id="range-speed" />';
       html += '<span class="label-sm" style="margin-left:6px;">Count-in</span>';
       html += '<input class="speed-slider" style="width:44px;" type="number" min="0" max="15" value="' + state.countInSeconds + '" id="count-in-input" />';
       html += '<span class="label-sm">s</span></div>';
