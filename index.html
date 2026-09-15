@@ -2208,21 +2208,34 @@
   function stopAutoScroll(){
     if(scrollAnimId) cancelAnimationFrame(scrollAnimId);
     scrollAnimId = null;
+    if(scrollWatchdogId){ clearInterval(scrollWatchdogId); scrollWatchdogId = null; }
   }
 
   var userTouchingStage = false;
 
+  var scrollWatchdogId = null;
+  var lastScrollFrameTime = 0;
+
   function startAutoScroll(){
     stopAutoScroll();
-    var el = document.getElementById('stage');
-    if(!el) return;
     var lastTs = null;
+    var lastEl = null;
     // Float accumulator avoids sub-pixel rounding loss at slow speeds, but is
     // resynced to the real scrollTop whenever the user is touching the screen,
     // so manual scroll always wins and autoscroll resumes from there smoothly.
-    var pos = el.scrollTop;
+    var pos = null;
+    lastScrollFrameTime = performance.now();
     function step(ts){
       if(!state.autoScroll){ return; }
+      lastScrollFrameTime = ts;
+      // Re-fetch the stage element every frame (instead of once, up front) so
+      // that if anything in between re-renders #root — replacing the old
+      // <div id="stage"> with a new one — this loop doesn't keep quietly
+      // scrolling a detached, invisible copy of it. When the element has
+      // changed, resync the position tracker to avoid a visible jump.
+      var el = document.getElementById('stage');
+      if(!el){ scrollAnimId = requestAnimationFrame(step); return; }
+      if(el !== lastEl){ lastEl = el; pos = el.scrollTop; lastTs = null; }
       if(lastTs == null){ lastTs = ts; pos = el.scrollTop; scrollAnimId = requestAnimationFrame(step); return; }
       var dt = (ts - lastTs) / 1000;
       lastTs = ts;
@@ -2243,6 +2256,15 @@
       scrollAnimId = requestAnimationFrame(step);
     }
     scrollAnimId = requestAnimationFrame(step);
+
+    // Watchdog: some mobile browsers briefly stall requestAnimationFrame while
+    // the user is actively dragging another control (like the speed slider).
+    // If autoscroll is supposed to be running but no frame has landed in over
+    // a second, silently restart the loop instead of leaving it stuck.
+    scrollWatchdogId = setInterval(function(){
+      if(!state.autoScroll){ return; }
+      if(performance.now() - lastScrollFrameTime > 1000){ startAutoScroll(); }
+    }, 1000);
   }
 
   function toggleAutoScroll(){
