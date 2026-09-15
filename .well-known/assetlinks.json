@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.arvinmemaphu_beep.twa",
+      "sha256_cert_fingerprints": [
+        "70:4E:8D:70:A7:A6:B1:6A:4D:F3:51:57:6E:7A:5A:1C:4B:2B:29:64:F5:C0:1B:DA:7A:7C:CB:EB:DB:40:E3:82"
+      ]
+    }
+  }
+]
