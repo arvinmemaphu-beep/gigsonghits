@@ -260,6 +260,10 @@
   .chord-modal .diagram-wrap{ display:flex; justify-content:center; margin: 6px 0 14px; }
   .chord-modal .close-btn{ background:var(--surface-2); border:1px solid var(--line); color:var(--text); padding:8px 20px; border-radius:6px; font-size:12px; letter-spacing:1px; text-transform:uppercase; }
   .chord-modal .close-btn:hover{ border-color:var(--gold-dim); color:var(--gold); }
+  .chord-modal .inst-toggle{ display:flex; justify-content:center; gap:6px; margin:0 0 10px; }
+  .chord-modal .inst-btn{ background:var(--surface-2); border:1px solid var(--line); color:var(--text); padding:5px 12px; border-radius:20px; font-size:12px; cursor:pointer; }
+  .chord-modal .inst-btn:hover{ border-color:var(--gold-dim); }
+  .chord-modal .inst-btn.on{ background:var(--gold); border-color:var(--gold); color:var(--on-accent); font-weight:700; }
 
   .tuner-modal{ background: var(--surface); border:1px solid var(--line); border-radius:14px; padding:24px 28px 22px; width:420px; max-width:92vw; text-align:center; box-shadow: 0 16px 40px rgba(0,0,0,0.5); }
   .tuner-modal h3{ margin:0 0 12px; font-size:18px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text); }
@@ -577,6 +581,68 @@
                 'sus4': [0, 2, 2, 2, 0, 0],
                 'sus2': [0, 2, 4, 1, 0, -1]
             };
+            // Movable B-shape barre templates for UKULELE (root note played on the G string)
+            var UKE_BARRE_TEMPLATES = {
+                'maj': [4, 3, 2, 2],
+                'm': [4, 2, 2, 2],
+                '7': [4, 3, 2, 0],
+                'maj7': [4, 3, 1, 1],
+                'm7': [4, 2, 2, 0],
+                'sus4': [4, 4, 2, 2],
+                'sus2': [4, 1, 2, 2]
+            };
+            // Ukulele open-position shapes (standard G-C-E-A tuning), one per natural root + common quality.
+            // Verified chord tones: each row produces the correct notes of its chord.
+            var UKULELE_OPEN_SHAPES = {
+                'C': [0, 0, 0, 3],
+                'Cmaj7': [0, 0, 0, 2],
+                'C7': [0, 0, 0, 1],
+                'C#maj': [1, 1, 1, 4],
+                'C#maj7': [1, 1, 1, 3],
+                'C#m': [1, 1, 0, 4],
+                'C#m7': [1, 1, 0, 2],
+                'C#7': [1, 1, 1, 2],
+                'D': [2, 2, 2, 0],
+                'Dm': [2, 2, 1, 0],
+                'D7': [2, 2, 2, 3],
+                'D#maj': [3, 3, 3, 1],
+                'D#m': [3, 3, 2, 1],
+                'D#7': [3, 3, 3, 4],
+                'E': [4, 4, 4, 2],
+                'Em': [0, 4, 3, 2],
+                'E7': [1, 2, 0, 2],
+                'Emaj7': [1, 3, 0, 2],
+                'Em7': [0, 2, 0, 2],
+                'F': [2, 0, 1, 0],
+                'Fmaj7': [5, 4, 1, 0],
+                'Fm': [1, 0, 1, 3],
+                'F7': [2, 3, 1, 3],
+                'F#maj': [3, 1, 2, 1],
+                'F#maj7': [6, 6, 1, 1],
+                'F#m': [2, 1, 2, 0],
+                'F#7': [3, 4, 2, 4],
+                'G': [0, 2, 3, 2],
+                'G7': [0, 2, 1, 2],
+                'Gm': [0, 2, 3, 1],
+                'G#maj': [5, 3, 4, 3],
+                'G#m': [4, 3, 4, 2],
+                'G#7': [1, 3, 2, 3],
+                'G#m7': [1, 3, 2, 2],
+                'A': [2, 1, 0, 0],
+                'Am': [2, 0, 0, 0],
+                'A7': [0, 1, 0, 0],
+                'Amaj7': [1, 1, 0, 0],
+                'Am7': [0, 0, 0, 0],
+                'A#maj': [3, 2, 1, 1],
+                'A#maj7': [3, 5, 5, 5],
+                'A#m': [3, 1, 1, 1],
+                'A#m7': [1, 1, 1, 1],
+                'A#7': [1, 2, 1, 1],
+                'B': [4, 3, 2, 2],
+                'Bm': [4, 2, 2, 2],
+                'Bm7': [4, 2, 2, 0],
+                'B7': [4, 3, 2, 0]
+            };
 
             function normalizeQuality(rawSuffix) {
                 var s = (rawSuffix || '').toLowerCase();
@@ -603,33 +669,34 @@
                 var suffix = slashIdx !== -1 ? rest.slice(0, slashIdx) : rest;
                 var root = normalizeRoot(rawRoot);
                 var q = normalizeQuality(suffix);
+                var isUke = state.chordInstrument === 'ukulele';
 
                 // Try hardcoded open shape first (only for natural-letter roots without # )
-                var naturalKey = rawRoot.length === 1 ? rawRoot : null;
-                if (naturalKey) {
-                    var tableKey = naturalKey + (q.key === 'maj' ? '' : q.key);
-                    if (OPEN_SHAPES[tableKey]) {
-                        return { frets: OPEN_SHAPES[tableKey], exact: q.exact, label: chordToken };
-                    }
+                var openTable = isUke ? UKULELE_OPEN_SHAPES : OPEN_SHAPES;
+                var tableKey = rawRoot + (q.key === 'maj' ? '' : q.key);
+                if (openTable[tableKey]) {
+                    return { frets: openTable[tableKey], exact: q.exact, label: chordToken };
                 }
                 // Fallback: algorithmic barre chord (E-shape), shifted by semitone distance from E
-                var template = BARRE_TEMPLATES[q.key] || BARRE_TEMPLATES['maj'];
+                var barreTable = isUke ? UKE_BARRE_TEMPLATES : BARRE_TEMPLATES;
+                var template = barreTable[q.key] || barreTable['maj'];
                 var idxRoot = NOTES.indexOf(root);
-                var idxE = NOTES.indexOf('E');
-                var offset = (idxRoot - idxE + 12) % 12;
+                var idxAnchor = NOTES.indexOf(isUke ? 'B' : 'E'); // barre root string: B on the G string (uke), low E (guitar)
+                var offset = (idxRoot - idxAnchor + 12) % 12;
                 var frets = template.map(function (f) { return f === -1 ? -1 : f + offset; });
                 return { frets: frets, exact: q.exact, label: chordToken };
             }
 
             function chordDiagramSVG(shape) {
                 var frets = shape.frets;
+                var numStrings = frets.length; // 4 = ukulele, 6 = guitar
                 var positives = frets.filter(function (f) { return f > 0; });
                 var maxFret = positives.length ? Math.max.apply(null, positives) : 0;
                 var startFret = (maxFret <= 4) ? 1 : Math.min.apply(null, positives);
                 var numFretsShown = 4;
                 var w = 160, h = 190;
                 var leftPad = 26, topPad = 34, gridW = 108, gridH = 120;
-                var stringGap = gridW / 5;
+                var stringGap = gridW / (numStrings - 1);
                 var fretGap = gridH / numFretsShown;
 
                 var svg = '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" xmlns="http://www.w3.org/2000/svg">';
@@ -641,7 +708,7 @@
                 svg += '<rect x="' + (leftPad - 6) + '" y="' + (topPad - 6) + '" width="' + (gridW + 12) + '" height="' + (gridH + 12) + '" rx="4" fill="#171310"></rect>';
 
                 // string labels (x / o) above nut, only meaningful when showing from fret 1
-                for (var s = 0; s < 6; s++) {
+                for (var s = 0; s < numStrings; s++) {
                     var x = leftPad + s * stringGap;
                     var f = frets[s];
                     var mark = '';
@@ -670,17 +737,17 @@
                     svg += '<line x1="' + leftPad + '" y1="' + y + '" x2="' + (leftPad + gridW) + '" y2="' + y + '" stroke="#4a4034" stroke-width="1"></line>';
                 }
                 // string lines
-                for (var st = 0; st < 6; st++) {
+                for (var st = 0; st < numStrings; st++) {
                     var sx = leftPad + st * stringGap;
                     svg += '<line x1="' + sx + '" y1="' + topPad + '" x2="' + sx + '" y2="' + (topPad + gridH) + '" stroke="#4a4034" stroke-width="1"></line>';
                 }
 
                 // detect barre: same fret value repeated across 3+ adjacent strings (excluding -1)
                 var barreFretVal = null, barreStart = -1, barreEnd = -1;
-                for (var b = 0; b < 6; b++) {
+                for (var b = 0; b < numStrings; b++) {
                     if (frets[b] > 0) {
                         var runEnd = b;
-                        while (runEnd + 1 < 6 && frets[runEnd + 1] === frets[b]) runEnd++;
+                        while (runEnd + 1 < numStrings && frets[runEnd + 1] === frets[b]) runEnd++;
                         if (runEnd - b >= 3) { barreFretVal = frets[b]; barreStart = b; barreEnd = runEnd; break; }
                     }
                 }
@@ -693,7 +760,7 @@
                 }
 
                 // dots for fretted notes
-                for (var d = 0; d < 6; d++) {
+                for (var d = 0; d < numStrings; d++) {
                     var fv = frets[d];
                     if (fv > 0) {
                         var isPartOfBarre = barreFretVal !== null && fv === barreFretVal && d >= barreStart && d <= barreEnd;
@@ -770,13 +837,22 @@
                 folderBrowseImportingAll: false,
                 folderBrowseConfirmAllOpen: false,
                 sharedConfirmAllOpen: false,
+                theme: 'default',
+                themeModalOpen: false,
+                chordInstrument: 'guitar', // which instrument's chord diagrams to show on tap: 'guitar' | 'ukulele'
                 tunerOpen: false,
                 tunerInstrument: 'guitar', // 'guitar' | 'ukulele'
                 tunerListening: false,
-                tunerError: null,
-                theme: 'default',
-                themeModalOpen: false
+                tunerError: null
             };
+
+            // remember the chosen chord instrument between sessions
+            (function () {
+                try {
+                    var savedInst = localStorage.getItem('gigsonghits:chordInstrument');
+                    if (savedInst === 'guitar' || savedInst === 'ukulele') state.chordInstrument = savedInst;
+                } catch (e) { }
+            })();
 
             var THEMES = [
                 { id: 'default', name: 'Stage Gold', dots: ['#0F0D0B', '#E8A33D', '#4FA8A0'] },
@@ -1243,6 +1319,13 @@
                 state.themeModalOpen = false;
                 applyThemeToDocument(themeId);
                 await safeStorageSet('theme', themeId);
+                render();
+            }
+
+            function setChordInstrument(instrument) {
+                if (instrument !== 'guitar' && instrument !== 'ukulele') return;
+                state.chordInstrument = instrument;
+                try { localStorage.setItem('gigsonghits:chordInstrument', instrument); } catch (e) { }
                 render();
             }
 
@@ -2604,6 +2687,11 @@
 
                     html += '<div class="tool-group"><span class="label-sm">Aa</span><input class="fontsize-slider" type="range" min="12" max="36" value="' + state.fontSize + '" id="range-font" /></div>';
 
+                    html += '<div class="tool-group"><span class="label-sm">Chords</span>';
+                    html += '<button class="tool-btn wide' + (state.chordInstrument === 'guitar' ? ' on' : '') + '" id="btn-inst-guitar" title="Ipakita ang guitar chord diagrams">Guitar</button>';
+                    html += '<button class="tool-btn wide' + (state.chordInstrument === 'ukulele' ? ' on' : '') + '" id="btn-inst-ukulele" title="Ipakita ang ukulele chord diagrams">Ukulele</button>';
+                    html += '</div>';
+
                     html += '<div class="tool-group"><button class="tool-btn wide' + (state.mode === 'edit' ? ' on' : '') + '" id="btn-toggle-mode">' + (state.mode === 'edit' ? 'DONE' : 'EDIT') + '</button></div>';
                 }
                 html += '<div class="spacer"></div>';
@@ -2683,6 +2771,10 @@
                     html += '<div class="confirm-overlay" id="chord-overlay"><div class="chord-modal">';
                     if (shape) {
                         html += '<h3>' + escapeHtml(state.chordModal) + '</h3>';
+                        html += '<div class="inst-toggle">';
+                        html += '<button class="inst-btn' + (state.chordInstrument !== 'ukulele' ? ' on' : '') + '" id="btn-modal-guitar">\uD83C\uDFB8 Guitar</button>';
+                        html += '<button class="inst-btn' + (state.chordInstrument === 'ukulele' ? ' on' : '') + '" id="btn-modal-ukulele">\uD83E\uDED5 Ukulele</button>';
+                        html += '</div>';
                         if (!shape.exact) html += '<p class="approx-note">Closest na guide shape lang</p>';
                         html += '<div class="diagram-wrap">' + chordDiagramSVG(shape) + '</div>';
                     } else {
@@ -3089,6 +3181,16 @@
 
                 if (byId('btn-close-chord')) byId('btn-close-chord').onclick = function () { state.chordModal = null; render(); };
                 if (byId('chord-overlay')) byId('chord-overlay').onclick = function (e) { if (e.target.id === 'chord-overlay') { state.chordModal = null; render(); } };
+
+                var instGtr = byId('btn-inst-guitar');
+                if (instGtr) instGtr.onclick = function () { setChordInstrument('guitar'); };
+                var instUke = byId('btn-inst-ukulele');
+                if (instUke) instUke.onclick = function () { setChordInstrument('ukulele'); };
+
+                var modalGtr = byId('btn-modal-guitar');
+                if (modalGtr) modalGtr.onclick = function () { setChordInstrument('guitar'); };
+                var modalUke = byId('btn-modal-ukulele');
+                if (modalUke) modalUke.onclick = function () { setChordInstrument('ukulele'); };
 
                 var editTitle = byId('edit-title');
                 if (editTitle) {
