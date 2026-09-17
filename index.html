@@ -24,10 +24,79 @@
     --line: #34291f;
     --gold: #E8A33D;
     --gold-dim: #8a662a;
+    --gold-light: #f2b559;
+    --gold-rgb: 232,163,61;
     --teal: #4FA8A0;
+    --teal-rgb: 79,168,160;
     --text: #F2EDE4;
     --muted: #9a8f80;
     --danger: #c96256;
+    --on-accent: #181410;
+  }
+  /* ---- Color themes: applied via data-theme on <html> ---- */
+  html[data-theme="daylight"]{
+    --bg: #F7F3EC;
+    --surface: #FFFFFF;
+    --surface-2: #F1EAD9;
+    --line: #E1D6BF;
+    --gold: #B8792E;
+    --gold-dim: #8a662a;
+    --gold-light: #cf9247;
+    --gold-rgb: 184,121,46;
+    --teal: #1F8A82;
+    --teal-rgb: 31,138,130;
+    --text: #241C14;
+    --muted: #79695A;
+    --danger: #B23A2E;
+    --on-accent: #FFFFFF;
+  }
+  html[data-theme="ocean"]{
+    --bg: #0A1420;
+    --surface: #122236;
+    --surface-2: #1A3049;
+    --line: #274865;
+    --gold: #4EA1D4;
+    --gold-dim: #336E90;
+    --gold-light: #78bce4;
+    --gold-rgb: 78,161,212;
+    --teal: #3FD1C4;
+    --teal-rgb: 63,209,196;
+    --text: #EAF2FA;
+    --muted: #8FA6BC;
+    --danger: #E0665A;
+    --on-accent: #0A1420;
+  }
+  html[data-theme="crimson"]{
+    --bg: #180A0A;
+    --surface: #261313;
+    --surface-2: #321818;
+    --line: #4A2424;
+    --gold: #E8604E;
+    --gold-dim: #8F362C;
+    --gold-light: #f18978;
+    --gold-rgb: 232,96,78;
+    --teal: #E8B23D;
+    --teal-rgb: 232,178,61;
+    --text: #F7E9E6;
+    --muted: #B08A85;
+    --danger: #FF6B57;
+    --on-accent: #180A0A;
+  }
+  html[data-theme="forest"]{
+    --bg: #0A1710;
+    --surface: #12261A;
+    --surface-2: #183422;
+    --line: #244A32;
+    --gold: #4ED48A;
+    --gold-dim: #2F8F5D;
+    --gold-light: #79e3a8;
+    --gold-rgb: 78,212,138;
+    --teal: #E8C33D;
+    --teal-rgb: 232,195,61;
+    --text: #EAFBF0;
+    --muted: #8FBBA0;
+    --danger: #E0665A;
+    --on-accent: #0A1710;
   }
   *{ box-sizing: border-box; }
   html,body{ margin:0; padding:0; background:var(--bg); color:var(--text); height:100%; }
@@ -35,8 +104,8 @@
     font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif;
     min-height: 100vh;
     background-image:
-      radial-gradient(circle at 15% -10%, rgba(232,163,61,0.10), transparent 45%),
-      radial-gradient(circle at 90% 10%, rgba(79,168,160,0.08), transparent 40%);
+      radial-gradient(circle at 15% -10%, rgba(var(--gold-rgb), 0.10), transparent 45%),
+      radial-gradient(circle at 90% 10%, rgba(var(--teal-rgb), 0.08), transparent 40%);
   }
   #root{ min-height:100vh; }
   ::selection{ background: var(--gold); color:#141210; }
@@ -60,18 +129,32 @@
   .brand-mark .bolt{ color:var(--gold); font-size:20px; }
   .brand h1{ margin:0; font-size:20px; letter-spacing:1px; font-weight:700; text-transform:uppercase; }
   .brand p{ margin:4px 0 0; font-size:11px; color:var(--muted); letter-spacing:1.5px; text-transform:uppercase; }
-  .brand-tuner-btn{ background:var(--gold); color:#181410; border:none; border-radius:7px; padding:8px 10px; font-size:11px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; white-space:nowrap; flex-shrink:0; }
+  .brand-tuner-btn{ background:var(--gold); color:var(--on-accent); border:none; border-radius:7px; padding:8px 10px; font-size:11px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; white-space:nowrap; flex-shrink:0; }
+  .brand-btn-row{ display:flex; gap:6px; flex-shrink:0; }
+  .brand-theme-btn{ background:var(--surface-2); border:1px solid var(--line); color:var(--text); border-radius:7px; width:34px; height:34px; font-size:15px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .brand-theme-btn:hover{ border-color:var(--gold-dim); }
   .trademark{ position:fixed; bottom:8px; right:12px; font-size:10px; letter-spacing:2px; color:var(--gold-dim); text-transform:uppercase; z-index:5; pointer-events:none; opacity:0.85; }
+  .theme-modal{ background: var(--surface); border:1px solid var(--line); border-radius:12px; padding:20px 22px 18px; width:280px; box-shadow: 0 16px 40px rgba(0,0,0,0.5); }
+  .theme-modal h3{ margin:0 0 4px; font-size:16px; color:var(--text); letter-spacing:0.5px; }
+  .theme-modal .theme-sub{ margin:0 0 16px; font-size:11px; color:var(--muted); letter-spacing:0.5px; }
+  .theme-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:16px; }
+  .theme-swatch{ background: var(--surface-2); border:2px solid var(--line); border-radius:9px; padding:10px 8px; display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .theme-swatch.active{ border-color: var(--gold); }
+  .theme-swatch .dots{ display:flex; gap:4px; }
+  .theme-swatch .dot{ width:14px; height:14px; border-radius:50%; }
+  .theme-swatch .name{ font-size:11px; color:var(--text); letter-spacing:0.5px; }
+  .theme-modal .close-btn{ width:100%; background:var(--surface-2); border:1px solid var(--line); color:var(--text); padding:9px 20px; border-radius:6px; font-size:12px; letter-spacing:1px; text-transform:uppercase; }
+  .theme-modal .close-btn:hover{ border-color:var(--gold-dim); color:var(--gold); }
 
   .setlist-head{ display:flex; align-items:center; justify-content:space-between; padding: 14px 16px 8px; }
   .setlist-head span{ font-size:11px; letter-spacing:2px; color:var(--muted); text-transform:uppercase; }
-  .new-btn{ background: var(--gold); color:#181410; border:none; border-radius:4px; width:24px; height:24px; font-size:16px; font-weight:700; line-height:1; display:flex; align-items:center; justify-content:center; }
-  .new-btn:hover{ background:#f2b559; }
+  .new-btn{ background: var(--gold); color:var(--on-accent); border:none; border-radius:4px; width:24px; height:24px; font-size:16px; font-weight:700; line-height:1; display:flex; align-items:center; justify-content:center; }
+  .new-btn:hover{ background:var(--gold-light); }
 
   .song-list{ overflow-y:auto; flex:1; padding: 4px 8px 12px; }
   .song-item{ padding:10px 10px; border-radius:6px; cursor:pointer; display:flex; flex-direction:column; gap:2px; border:1px solid transparent; margin-bottom:3px; }
   .song-item:hover{ background: var(--surface-2); }
-  .song-item.active{ background: rgba(232,163,61,0.10); border-color: var(--gold-dim); }
+  .song-item.active{ background: rgba(var(--gold-rgb), 0.10); border-color: var(--gold-dim); }
   .song-item .t{ font-size:14px; font-weight:500; color:var(--text); }
   .song-item .k{ font-size:11px; color:var(--teal); letter-spacing:1px; }
   .empty-hint{ padding: 20px 16px; color:var(--muted); font-size:12px; line-height:1.6; }
@@ -82,11 +165,11 @@
   .folder-card .info{ display:flex; flex-direction:column; gap:1px; flex:1; min-width:0; }
   .folder-card .name{ font-size:14px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .folder-card .count{ font-size:11px; color:var(--muted); letter-spacing:0.5px; }
-  .folder-card.all{ background: rgba(79,168,160,0.08); border-color: rgba(79,168,160,0.25); }
+  .folder-card.all{ background: rgba(var(--teal-rgb), 0.08); border-color: rgba(var(--teal-rgb), 0.25); }
   .folder-card.all .ico{ color: var(--teal); }
   .folder-actions{ display:flex; gap:4px; flex-shrink:0; }
   .folder-action-btn{ background:transparent; border:1px solid var(--line); color:var(--muted); width:26px; height:26px; border-radius:5px; font-size:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-  .folder-action-btn:hover{ border-color: var(--gold-dim); color: var(--gold); background: rgba(232,163,61,0.08); }
+  .folder-action-btn:hover{ border-color: var(--gold-dim); color: var(--gold); background: rgba(var(--gold-rgb), 0.08); }
   .folder-action-btn.danger:hover{ border-color: var(--danger); color: var(--danger); background: rgba(201,98,86,0.10); }
   .folder-card.renaming{ cursor:default; }
   .rename-folder-input{ flex:1; min-width:0; background:var(--surface-2); border:1px solid var(--gold-dim); color:var(--text); border-radius:5px; padding:6px 8px; font-size:13px; }
@@ -98,7 +181,7 @@
   .search-row input[type="search"]:focus{ outline:none; border-color:var(--gold-dim); }
   .search-row input[type="search"]::placeholder{ color:var(--muted); }
   .search-clear{ position:absolute; right:18px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--muted); font-size:13px; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
-  .search-clear:hover{ color:var(--gold); background:rgba(232,163,61,0.12); }
+  .search-clear:hover{ color:var(--gold); background:rgba(var(--gold-rgb), 0.12); }
 
   .folder-header{ display:flex; align-items:center; gap:8px; padding: 12px 12px 8px; }
   .back-btn{ background:var(--surface-2); border:1px solid var(--line); color:var(--text); width:28px; height:28px; border-radius:6px; font-size:14px; display:flex; align-items:center; justify-content:center; }
@@ -109,7 +192,7 @@
   .add-folder-row{ display:flex; gap:6px; padding: 8px 10px 4px; }
   .add-folder-row input{ flex:1; background:var(--surface-2); border:1px solid var(--line); color:var(--text); border-radius:5px; padding:7px 8px; font-size:12px; }
   .add-folder-row input:focus{ outline:none; border-color:var(--gold-dim); }
-  .add-folder-row button{ background:var(--gold); color:#181410; border:none; border-radius:5px; padding:0 10px; font-size:11px; font-weight:700; }
+  .add-folder-row button{ background:var(--gold); color:var(--on-accent); border:none; border-radius:5px; padding:0 10px; font-size:11px; font-weight:700; }
   .add-folder-row .cancel-x{ background:var(--surface-2); color:var(--text); border:1px solid var(--line); }
 
   .sidebar-foot{ border-top:1px solid var(--line); padding:10px; display:flex; gap:8px; background:var(--surface); position:sticky; bottom:0; flex-shrink:0; }
@@ -123,8 +206,8 @@
 
   .tool-group{ display:flex; align-items:center; gap:6px; background:var(--surface-2); border:1px solid var(--line); border-radius:7px; padding:4px; }
   .tool-btn{ background:transparent; border:none; color:var(--text); width:30px; height:30px; border-radius:5px; font-size:15px; font-weight:600; display:flex; align-items:center; justify-content:center; }
-  .tool-btn:hover{ background: rgba(232,163,61,0.15); color:var(--gold); }
-  .tool-btn.on{ background: var(--gold); color:#181410; }
+  .tool-btn:hover{ background: rgba(var(--gold-rgb), 0.15); color:var(--gold); }
+  .tool-btn.on{ background: var(--gold); color:var(--on-accent); }
   .tool-btn.wide{ width:auto; padding:0 10px; font-size:11px; letter-spacing:1px; }
   .key-display{ min-width:52px; text-align:center; font-family:'Courier New',monospace; font-weight:700; color:var(--gold); font-size:13px; letter-spacing:1px; }
 
@@ -152,14 +235,14 @@
   .folder-select:focus{ outline:none; border-color: var(--gold); }
   .folder-new-row{ display:inline-flex; gap:6px; align-items:center; }
   .folder-new-row input{ background:var(--surface-2); border:1px solid var(--gold-dim); color:var(--text); border-radius:5px; padding:6px 8px; font-size:12px; text-transform:none; letter-spacing:normal; width:110px; }
-  .folder-new-row button{ background:var(--gold); color:#181410; border:none; border-radius:5px; padding:6px 9px; font-size:11px; font-weight:700; }
+  .folder-new-row button{ background:var(--gold); color:var(--on-accent); border:none; border-radius:5px; padding:6px 9px; font-size:11px; font-weight:700; }
   .folder-new-row .cancel-x{ background:var(--surface-2); color:var(--text); border:1px solid var(--line); padding:6px 9px; }
 
   .chart{ font-family: 'Roboto Mono', 'DejaVu Sans Mono', 'Consolas', 'Menlo', monospace; line-height: 2.15; white-space: normal; overflow-wrap: break-word; word-break: break-word; max-width: 100%; }
   .chord-line{ color: var(--gold); font-weight:700; letter-spacing:0.5px; }
   .lyric-line{ color: var(--text); }
-  .chord-tok{ background: rgba(232,163,61,0.14); color:var(--gold); padding:1px 5px; border-radius:4px; display:inline-block; margin-right:2px; font-weight:700; cursor:pointer; transition: background 0.12s, transform 0.12s; }
-  .chord-tok:hover{ background: rgba(232,163,61,0.32); transform: translateY(-1px); }
+  .chord-tok{ background: rgba(var(--gold-rgb), 0.14); color:var(--gold); padding:1px 5px; border-radius:4px; display:inline-block; margin-right:2px; font-weight:700; cursor:pointer; transition: background 0.12s, transform 0.12s; }
+  .chord-tok:hover{ background: rgba(var(--gold-rgb), 0.32); transform: translateY(-1px); }
   .blank-line{ height: 0.6em; }
   /* Chord+lyric pairing: each chord is grouped with the exact syllable/word it sits
      above into one atomic flex unit, so when the line wraps (narrow screen, pinch
@@ -182,7 +265,7 @@
   .tuner-modal h3{ margin:0 0 12px; font-size:18px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text); }
   .tuner-inst-toggle{ display:flex; gap:6px; background:var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:4px; margin-bottom:16px; }
   .tuner-inst-toggle button{ flex:1; background:transparent; border:none; color:var(--muted); padding:9px 4px; border-radius:6px; font-size:13px; letter-spacing:1px; text-transform:uppercase; font-weight:600; }
-  .tuner-inst-toggle button.on{ background:var(--gold); color:#181410; }
+  .tuner-inst-toggle button.on{ background:var(--gold); color:var(--on-accent); }
   .tuner-readout{ background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:18px 12px 14px; margin-bottom:14px; min-height:190px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; }
   .tuner-gauge-wrap{ position:relative; width:240px; max-width:100%; margin:0 auto; }
   .tuner-gauge-svg{ width:100%; height:auto; display:block; overflow:visible; }
@@ -207,12 +290,12 @@
   .tuner-readout.flat{ box-shadow: 0 0 0 2px #f2c94c inset; }
   .tuner-readout.sharp{ box-shadow: 0 0 0 2px #e5484d inset; }
   .tuner-idle{ color:var(--muted); font-size:12px; line-height:1.6; }
-  .tuner-listen-btn{ width:100%; background:var(--gold); color:#181410; border:none; border-radius:8px; padding:11px; font-size:13px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:12px; }
+  .tuner-listen-btn{ width:100%; background:var(--gold); color:var(--on-accent); border:none; border-radius:8px; padding:11px; font-size:13px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:12px; }
   .tuner-listen-btn.listening{ background:var(--danger); color:#fff; }
   .tuner-strings{ display:flex; justify-content:center; gap:4px; flex-wrap:nowrap; margin-bottom:14px; }
   .tuner-string-btn{ background:var(--surface-2); border:1px solid var(--line); color:var(--text); border-radius:7px; padding:9px 2px; font-size:13px; font-weight:700; flex:1 1 0; min-width:0; letter-spacing:-0.5px; font-family:'Roboto Mono',monospace; }
   .tuner-string-btn:hover{ border-color:var(--gold-dim); color:var(--gold); }
-  .tuner-string-btn.active-string{ border-color:var(--gold); color:var(--gold); background:rgba(232,163,61,0.12); }
+  .tuner-string-btn.active-string{ border-color:var(--gold); color:var(--gold); background:rgba(var(--gold-rgb), 0.12); }
   .tuner-hint{ color:var(--muted); font-size:11px; line-height:1.5; margin:0 0 6px; }
 
   .editor-wrap{ display:flex; flex-direction:column; gap:10px; }
@@ -235,10 +318,10 @@
   .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background: var(--surface-2); border:1px solid var(--gold-dim); color:var(--text); padding: 10px 18px; border-radius:8px; font-size:13px; letter-spacing:0.5px; z-index:200; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
 
   .confirm-overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center; z-index:70; }
-  .countdown-badge{ position:fixed; bottom:28px; left:50%; transform:translateX(-50%); z-index:70; background: var(--gold); border:2px solid #f2b559; border-radius:16px; padding:14px 28px; text-align:center; box-shadow: 0 12px 32px rgba(0,0,0,0.5); display:flex; align-items:center; gap:16px; animation: countdownPulse 1s ease-in-out infinite; }
+  .countdown-badge{ position:fixed; bottom:28px; left:50%; transform:translateX(-50%); z-index:70; background: var(--gold); border:2px solid var(--gold-light); border-radius:16px; padding:14px 28px; text-align:center; box-shadow: 0 12px 32px rgba(0,0,0,0.5); display:flex; align-items:center; gap:16px; animation: countdownPulse 1s ease-in-out infinite; }
   @keyframes countdownPulse{ 0%,100%{ transform:translateX(-50%) scale(1); } 50%{ transform:translateX(-50%) scale(1.04); } }
   .countdown-label{ font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:#4a3611; font-weight:700; }
-  .countdown-number{ font-size:56px; font-weight:800; color:#181410; line-height:1; }
+  .countdown-number{ font-size:56px; font-weight:800; color:var(--on-accent); line-height:1; }
   .countdown-badge .close-btn{ background:#181410; border:1px solid #181410; color:var(--gold); padding:6px 14px; border-radius:6px; font-size:11px; letter-spacing:1px; text-transform:uppercase; font-weight:700; }
   .countdown-badge .close-btn:hover{ background:#241c14; }
   .confirm-box{ background: var(--surface); border:1px solid var(--line); border-radius:10px; padding:20px 22px; max-width:320px; text-align:center; }
@@ -265,6 +348,15 @@
 .fb-entry .fb-name:hover{ color:var(--gold); }
 .fb-up-row{ display:flex; align-items:center; gap:8px; padding: 4px 2px 8px; }
 </style>
+<script>
+  // Apply any saved theme immediately, before first paint, to avoid a flash of the default colors.
+  (function(){
+    try{
+      var t = localStorage.getItem('gigsonghits:theme');
+      if(t && t !== 'default') document.documentElement.setAttribute('data-theme', t);
+    }catch(e){}
+  })();
+</script>
 </head>
 <body>
     <div id="root">
@@ -681,8 +773,18 @@
                 tunerOpen: false,
                 tunerInstrument: 'guitar', // 'guitar' | 'ukulele'
                 tunerListening: false,
-                tunerError: null
+                tunerError: null,
+                theme: 'default',
+                themeModalOpen: false
             };
+
+            var THEMES = [
+                { id: 'default', name: 'Stage Gold', dots: ['#0F0D0B', '#E8A33D', '#4FA8A0'] },
+                { id: 'daylight', name: 'Daylight', dots: ['#F7F3EC', '#B8792E', '#1F8A82'] },
+                { id: 'ocean', name: 'Backstage Blue', dots: ['#0A1420', '#4EA1D4', '#3FD1C4'] },
+                { id: 'crimson', name: 'Crimson Stage', dots: ['#180A0A', '#E8604E', '#E8B23D'] },
+                { id: 'forest', name: 'Forest Green', dots: ['#0A1710', '#4ED48A', '#E8C33D'] }
+            ];
 
             var toastTimer = null;
             var scrollAnimId = null;
@@ -1126,6 +1228,35 @@
             }
             async function persistFolderList() {
                 await safeStorageSet('folder-list', JSON.stringify(state.folderList));
+            }
+
+            function applyThemeToDocument(themeId) {
+                if (themeId && themeId !== 'default') {
+                    document.documentElement.setAttribute('data-theme', themeId);
+                } else {
+                    document.documentElement.removeAttribute('data-theme');
+                }
+            }
+
+            async function setTheme(themeId) {
+                state.theme = themeId;
+                state.themeModalOpen = false;
+                applyThemeToDocument(themeId);
+                await safeStorageSet('theme', themeId);
+                render();
+            }
+
+            async function loadTheme() {
+                var saved = null;
+                try { saved = localStorage.getItem('gigsonghits:theme'); } catch (e) { }
+                if (!saved) {
+                    var r = await safeStorageGet('theme');
+                    if (r && r.value) saved = r.value;
+                }
+                if (saved) {
+                    state.theme = saved;
+                    applyThemeToDocument(saved);
+                }
             }
 
             // Union of the persisted folder list and any folder names in use by songs,
@@ -2429,7 +2560,7 @@
 
                 // Sidebar
                 html += '<div class="sidebar' + (state.sidebarOpen ? ' open' : '') + '">';
-                html += '  <div class="brand"><div><div class="brand-mark"><span class="bolt">\u266A</span><h1>Gig Song Hits</h1></div><p>Your on-stage songbook</p></div><button class="brand-tuner-btn" id="btn-tuner-brand">\uD83C\uDFB8 Tuner</button></div>';
+                html += '  <div class="brand"><div><div class="brand-mark"><span class="bolt">\u266A</span><h1>Gig Song Hits</h1></div><p>Your on-stage songbook</p></div><div class="brand-btn-row"><button class="brand-theme-btn" id="btn-theme" title="Palitan ang kulay">\uD83C\uDFA8</button><button class="brand-tuner-btn" id="btn-tuner-brand">\uD83C\uDFB8 Tuner</button></div></div>';
 
                 html += buildSearchRowHtml();
                 if (state.sidebarView === 'folders') {
@@ -2476,7 +2607,7 @@
                     html += '<div class="tool-group"><button class="tool-btn wide' + (state.mode === 'edit' ? ' on' : '') + '" id="btn-toggle-mode">' + (state.mode === 'edit' ? 'DONE' : 'EDIT') + '</button></div>';
                 }
                 html += '<div class="spacer"></div>';
-                html += '<button class="icon-btn" id="btn-tuner" style="background:var(--gold);color:#181410;border-color:var(--gold);font-weight:700;">\uD83C\uDFB8 Tuner</button>';
+                html += '<button class="icon-btn" id="btn-tuner" style="background:var(--gold);color:var(--on-accent);border-color:var(--gold);font-weight:700;">\uD83C\uDFB8 Tuner</button>';
                 html += '<button class="icon-btn" id="btn-import-top">Import</button>';
                 html += '<button class="icon-btn" id="btn-import-url-top">\uD83D\uDD17 URL</button>';
                 if (song) {
@@ -2487,7 +2618,7 @@
 
                 html += '  <div class="stage" id="stage">';
                 if (!song) {
-                    html += '<div class="empty-stage"><div class="big">\uD83C\uDFA4</div><h2>Wala pang napiling kanta</h2><p>Gumawa ng bago o mag-import ng chord sheet para makapagsimula sa gig mo.</p><button class="icon-btn" id="btn-tuner-home" style="background:var(--gold);color:#181410;border-color:var(--gold);font-weight:700;font-size:13px;padding:10px 18px;">\uD83C\uDFB8 Buksan ang Tuner</button><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;"><button class="icon-btn" id="btn-new-empty">+ New Song</button><button class="icon-btn" id="btn-import-empty">Import File</button><button class="icon-btn" id="btn-import-url-empty">\uD83D\uDD17 Import URL</button></div></div>';
+                    html += '<div class="empty-stage"><div class="big">\uD83C\uDFA4</div><h2>Wala pang napiling kanta</h2><p>Gumawa ng bago o mag-import ng chord sheet para makapagsimula sa gig mo.</p><button class="icon-btn" id="btn-tuner-home" style="background:var(--gold);color:var(--on-accent);border-color:var(--gold);font-weight:700;font-size:13px;padding:10px 18px;">\uD83C\uDFB8 Buksan ang Tuner</button><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;"><button class="icon-btn" id="btn-new-empty">+ New Song</button><button class="icon-btn" id="btn-import-empty">Import File</button><button class="icon-btn" id="btn-import-url-empty">\uD83D\uDD17 Import URL</button></div></div>';
                 } else if (state.mode === 'view') {
                     html += '<div class="song-title-row"><span class="main-title">' + escapeHtml(song.title || 'Untitled') + '</span></div>';
                     html += '<div class="song-meta"><span>Key: ' + displayedKey + '</span>';
@@ -2566,7 +2697,7 @@
                     html += '<p style="text-align:left;">Idikit ang link ng file: <b>.json</b> (buong setlist) o <b>.txt/.cho/.html/.docx/.pptx</b> (isang kanta) \u2014 o idikit ang link ng buong <b>GitHub folder</b> (hal. .../tree/main/choir) para makita muna ang listahan at pumili ka kung ano ang i-import.</p>';
                     html += '<input id="url-import-input" type="url" placeholder="https://example.com/song1.txt" value="' + escapeHtml(state.urlImportValue || '') + '" style="width:100%;background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:9px 10px;font-size:13px;margin-bottom:10px;box-sizing:border-box;" />';
                     if (state.urlImportError) html += '<p style="color:var(--danger);font-size:12px;text-align:left;margin:-4px 0 10px;">' + escapeHtml(state.urlImportError) + '</p>';
-                    html += '<div class="confirm-row"><button id="btn-cancel-urlimport">Cancel</button><button class="danger-btn" style="background:var(--gold);border-color:var(--gold);color:#181410;" id="btn-confirm-urlimport" ' + (state.urlImportBusy ? 'disabled' : '') + '>' + (state.urlImportBusy ? 'Kinukuha\u2026' : 'I-import') + '</button></div>';
+                    html += '<div class="confirm-row"><button id="btn-cancel-urlimport">Cancel</button><button class="danger-btn" style="background:var(--gold);border-color:var(--gold);color:var(--on-accent);" id="btn-confirm-urlimport" ' + (state.urlImportBusy ? 'disabled' : '') + '>' + (state.urlImportBusy ? 'Kinukuha\u2026' : 'I-import') + '</button></div>';
                     html += '</div></div>';
                 }
 
@@ -2583,7 +2714,7 @@
                     html += '<p style="text-align:left;">Link para sa folder na "' + escapeHtml(state.currentFolder || 'All Songs') + '". Ibahagi ito sa mga bandmate mo \u2014 pag binuksan nila, makikita nila ang listahan at pwede nilang piliin o i-import lahat.</p>';
                     html += '<input id="share-link-input" class="share-link-input" readonly value="' + escapeHtml(state.shareModalUrl || '') + '" onclick="this.select()" />';
                     html += '<p style="color:var(--muted);font-size:11px;text-align:left;margin:-4px 0 10px;">Tip: mas maigsi at mas madaling i-share kung konti lang ang kanta sa folder.</p>';
-                    html += '<div class="confirm-row"><button id="btn-share-close">Isara</button><button class="danger-btn" style="background:var(--gold);border-color:var(--gold);color:#181410;" id="btn-share-copy">\uD83D\uDCCB Kopyahin</button></div>';
+                    html += '<div class="confirm-row"><button id="btn-share-close">Isara</button><button class="danger-btn" style="background:var(--gold);border-color:var(--gold);color:var(--on-accent);" id="btn-share-copy">\uD83D\uDCCB Kopyahin</button></div>';
                     html += '</div></div>';
                 }
 
@@ -2608,7 +2739,7 @@
                     html += '</div>';
                     html += '<div class="confirm-row" style="margin-top:14px;">';
                     html += '<button id="btn-shared-close">Isara</button>';
-                    html += '<button class="danger-btn" style="background:var(--gold);border-color:var(--gold);color:#181410;" id="btn-shared-importall" ' + (state.sharedImportingAll ? 'disabled' : '') + '>' + (state.sharedImportingAll ? 'Ini-import\u2026' : 'I-import Lahat') + '</button>';
+                    html += '<button class="danger-btn" style="background:var(--gold);border-color:var(--gold);color:var(--on-accent);" id="btn-shared-importall" ' + (state.sharedImportingAll ? 'disabled' : '') + '>' + (state.sharedImportingAll ? 'Ini-import\u2026' : 'I-import Lahat') + '</button>';
                     html += '</div>';
                     html += '</div></div>';
                 }
@@ -2647,7 +2778,7 @@
                     }
                     html += '<div class="confirm-row" style="margin-top:14px;">';
                     html += '<button id="btn-fb-close">Isara</button>';
-                    html += '<button class="danger-btn" style="background:var(--gold);border-color:var(--gold);color:#181410;" id="btn-fb-importall" ' + (state.folderBrowseImportingAll || state.folderBrowseBusy ? 'disabled' : '') + '>' + (state.folderBrowseImportingAll ? 'Ini-import\u2026' : 'I-import Lahat Dito') + '</button>';
+                    html += '<button class="danger-btn" style="background:var(--gold);border-color:var(--gold);color:var(--on-accent);" id="btn-fb-importall" ' + (state.folderBrowseImportingAll || state.folderBrowseBusy ? 'disabled' : '') + '>' + (state.folderBrowseImportingAll ? 'Ini-import\u2026' : 'I-import Lahat Dito') + '</button>';
                     html += '</div>';
                     html += '</div></div>';
                 }
@@ -2656,7 +2787,23 @@
                     var sharedPendingCount = state.sharedPreview ? state.sharedPreview.songs.filter(function (s, i) { return !state.sharedImportedIds[i]; }).length : 0;
                     html += '<div class="confirm-overlay" id="shared-confirmall-overlay"><div class="confirm-box">';
                     html += '<p>I-import ang <b>' + sharedPendingCount + ' kanta</b> mula sa shared na listahan na ito? Kung may na-import ka na dati mula rito, baka ma-doble ito.</p>';
-                    html += '<div class="confirm-row"><button id="btn-shared-confirmall-cancel">Cancel</button><button class="danger-btn" style="background:var(--gold);border-color:var(--gold);color:#181410;" id="btn-shared-confirmall-yes">Oo, i-import lahat</button></div>';
+                    html += '<div class="confirm-row"><button id="btn-shared-confirmall-cancel">Cancel</button><button class="danger-btn" style="background:var(--gold);border-color:var(--gold);color:var(--on-accent);" id="btn-shared-confirmall-yes">Oo, i-import lahat</button></div>';
+                    html += '</div></div>';
+                }
+
+                if (state.themeModalOpen) {
+                    html += '<div class="confirm-overlay" id="theme-overlay"><div class="theme-modal">';
+                    html += '<h3>\uD83C\uDFA8 Piliin ang Kulay</h3>';
+                    html += '<p class="theme-sub">Mapipili ang tema na pinaka-komportable sa mata mo sa stage.</p>';
+                    html += '<div class="theme-grid">';
+                    THEMES.forEach(function (t) {
+                        html += '<button class="theme-swatch' + (state.theme === t.id ? ' active' : '') + '" data-theme-id="' + t.id + '">';
+                        html += '<span class="dots">' + t.dots.map(function (c) { return '<span class="dot" style="background:' + c + ';border:1px solid rgba(255,255,255,0.15);"></span>'; }).join('') + '</span>';
+                        html += '<span class="name">' + t.name + '</span>';
+                        html += '</button>';
+                    });
+                    html += '</div>';
+                    html += '<button class="close-btn" id="btn-close-theme">Isara</button>';
                     html += '</div></div>';
                 }
 
@@ -2702,7 +2849,7 @@
                     var pendingCount = state.folderBrowseEntries ? state.folderBrowseEntries.filter(function (e) { return e.type === 'file' && !state.folderBrowseImportedPaths[e.path]; }).length : 0;
                     html += '<div class="confirm-overlay" id="fb-confirmall-overlay"><div class="confirm-box">';
                     html += '<p>I-import ang <b>' + pendingCount + ' kanta</b> mula sa folder na ito? Kung may na-import ka na dati mula rito, baka ma-doble ito.</p>';
-                    html += '<div class="confirm-row"><button id="btn-fb-confirmall-cancel">Cancel</button><button class="danger-btn" style="background:var(--gold);border-color:var(--gold);color:#181410;" id="btn-fb-confirmall-yes">Oo, i-import lahat</button></div>';
+                    html += '<div class="confirm-row"><button id="btn-fb-confirmall-cancel">Cancel</button><button class="danger-btn" style="background:var(--gold);border-color:var(--gold);color:var(--on-accent);" id="btn-fb-confirmall-yes">Oo, i-import lahat</button></div>';
                     html += '</div></div>';
                 }
 
@@ -2722,6 +2869,12 @@
             function attachHandlers() {
                 var byId = function (id) { return document.getElementById(id); };
 
+                if (byId('btn-theme')) byId('btn-theme').onclick = function () { state.themeModalOpen = true; render(); };
+                if (byId('btn-close-theme')) byId('btn-close-theme').onclick = function () { state.themeModalOpen = false; render(); };
+                if (byId('theme-overlay')) byId('theme-overlay').onclick = function (e) { if (e.target.id === 'theme-overlay') { state.themeModalOpen = false; render(); } };
+                document.querySelectorAll('.theme-swatch').forEach(function (btn) {
+                    btn.onclick = function () { setTheme(btn.getAttribute('data-theme-id')); };
+                });
                 if (byId('btn-tuner')) byId('btn-tuner').onclick = openTuner;
                 if (byId('btn-tuner-home')) byId('btn-tuner-home').onclick = openTuner;
                 if (byId('btn-tuner-brand')) byId('btn-tuner-brand').onclick = openTuner;
@@ -3042,6 +3195,7 @@
                 state.sharedModalOpen = true;
             }
 
+            loadTheme();
             loadSongs();
 
             if ('serviceWorker' in navigator) {
@@ -3096,9 +3250,9 @@
             function injectStyles() {
                 var css =
                     '#fe-fab{position:fixed;right:18px;bottom:18px;z-index:80;width:52px;height:52px;border-radius:50%;' +
-                    'background:var(--gold,#E8A33D);color:#181410;border:none;font-size:22px;box-shadow:0 8px 20px rgba(0,0,0,0.4);' +
+                    'background:var(--gold,#E8A33D);color:var(--on-accent);border:none;font-size:22px;box-shadow:0 8px 20px rgba(0,0,0,0.4);' +
                     'display:flex;align-items:center;justify-content:center;cursor:pointer;}' +
-                    '#fe-fab:hover{background:#f2b559;}' +
+                    '#fe-fab:hover{background:var(--gold-light,#f2b559);}' +
                     '#fe-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:90;display:none;align-items:center;justify-content:center;padding:16px;}' +
                     '#fe-overlay.open{display:flex;}' +
                     '.fe-panel{background:var(--surface,#1C1815);border:1px solid var(--line,#34291f);border-radius:12px;' +
@@ -3299,3 +3453,4 @@
 
 </body>
 </html>
+
