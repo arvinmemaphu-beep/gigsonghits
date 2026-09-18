@@ -209,7 +209,7 @@
   .tool-btn:hover{ background: rgba(var(--gold-rgb), 0.15); color:var(--gold); }
   .tool-btn.on{ background: var(--gold); color:var(--on-accent); }
   .tool-btn.wide{ width:auto; padding:0 10px; font-size:11px; letter-spacing:1px; }
-  .key-display{ min-width:52px; text-align:center; font-family:'Courier New',monospace; font-weight:700; color:var(--gold); font-size:13px; letter-spacing:1px; }
+  .key-display{ min-width:56px; text-align:center; font-family:'Courier New',monospace; font-weight:700; color:var(--gold); font-size:22px; letter-spacing:1px; }
 
   .spacer{ flex:1; }
   .label-sm{ font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); margin-right:2px; }
@@ -2700,10 +2700,6 @@
                 }
                 html += '<div class="spacer"></div>';
                 if (song) {
-                    html += '<div class="tool-group">';
-                    html += '<button class="tool-btn wide' + (state.chordInstrument === 'guitar' ? ' on' : '') + '" id="btn-inst-guitar" title="Ipakita ang guitar chord diagrams">Guitar</button>';
-                    html += '<button class="tool-btn wide' + (state.chordInstrument === 'ukulele' ? ' on' : '') + '" id="btn-inst-ukulele" title="Ipakita ang ukulele chord diagrams">Ukulele</button>';
-                    html += '</div>';
                     html += '<div class="tool-group"><button class="tool-btn wide' + (state.mode === 'edit' ? ' on' : '') + '" id="btn-toggle-mode">' + (state.mode === 'edit' ? 'DONE' : 'EDIT') + '</button></div>';
                     html += '<button class="icon-btn" id="btn-export">Export</button>';
                     html += '<button class="icon-btn" id="btn-delete" style="color:var(--danger);">Delete</button>';
@@ -3184,11 +3180,6 @@
 
                 if (byId('btn-close-chord')) byId('btn-close-chord').onclick = function () { state.chordModal = null; render(); };
                 if (byId('chord-overlay')) byId('chord-overlay').onclick = function (e) { if (e.target.id === 'chord-overlay') { state.chordModal = null; render(); } };
-
-                var instGtr = byId('btn-inst-guitar');
-                if (instGtr) instGtr.onclick = function () { setChordInstrument('guitar'); };
-                var instUke = byId('btn-inst-ukulele');
-                if (instUke) instUke.onclick = function () { setChordInstrument('ukulele'); };
 
                 var modalGtr = byId('btn-modal-guitar');
                 if (modalGtr) modalGtr.onclick = function () { setChordInstrument('guitar'); };
