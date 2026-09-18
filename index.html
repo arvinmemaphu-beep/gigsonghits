@@ -2697,16 +2697,14 @@
                     html += '<span class="label-sm">s</span></div>';
 
 
-                    html += '<div class="tool-group"><span class="label-sm">Chords</span>';
+                }
+                html += '<div class="spacer"></div>';
+                if (song) {
+                    html += '<div class="tool-group">';
                     html += '<button class="tool-btn wide' + (state.chordInstrument === 'guitar' ? ' on' : '') + '" id="btn-inst-guitar" title="Ipakita ang guitar chord diagrams">Guitar</button>';
                     html += '<button class="tool-btn wide' + (state.chordInstrument === 'ukulele' ? ' on' : '') + '" id="btn-inst-ukulele" title="Ipakita ang ukulele chord diagrams">Ukulele</button>';
                     html += '</div>';
-
                     html += '<div class="tool-group"><button class="tool-btn wide' + (state.mode === 'edit' ? ' on' : '') + '" id="btn-toggle-mode">' + (state.mode === 'edit' ? 'DONE' : 'EDIT') + '</button></div>';
-                }
-                html += '<div class="spacer"></div>';
-                html += '<button class="icon-btn" id="btn-tuner" style="background:var(--gold);color:var(--on-accent);border-color:var(--gold);font-weight:700;">\uD83C\uDFB8 Tuner</button>';
-                if (song) {
                     html += '<button class="icon-btn" id="btn-export">Export</button>';
                     html += '<button class="icon-btn" id="btn-delete" style="color:var(--danger);">Delete</button>';
                 }
@@ -2955,6 +2953,10 @@
 
                 root.innerHTML = html;
                 attachHandlers();
+                // Scale/Fretboard Explorer icon: main page only — hide the floating
+                // button while a song is open (the explorer is reachable from home).
+                var feFab = document.getElementById('fe-fab');
+                if (feFab) feFab.style.display = song ? 'none' : 'flex';
             }
 
             // Lightweight re-render for toolbar-only changes (autoscroll toggle) to avoid disrupting scroll position
@@ -3541,6 +3543,11 @@
                 fab.innerHTML = '\uD83C\uDFB8';
                 fab.addEventListener('click', openPanel);
                 document.body.appendChild(fab);
+                // If a song is already open at load time, start hidden — the app's
+                // render() keeps it in sync from here on.
+                if (document.querySelector('.song-title-row, .editor-wrap')) {
+                    fab.style.display = 'none';
+                }
             }
 
             if (document.readyState === 'loading') {
