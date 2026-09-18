@@ -1465,8 +1465,19 @@
                 stopAutoScroll();
                 stopCountdown();
                 var s = getActiveSong();
-                var sp = s ? computeScrollSpeedFromBpm(s.bpm) : null;
-                if (sp) state.scrollSpeed = sp;
+                if (s) {
+                    // Per-song memory: restore the speed and count-in last used with this song
+                    // (falls back to BPM-derived speed for songs without saved settings).
+                    if (typeof s.scrollSpeed === 'number' && s.scrollSpeed >= 1 && s.scrollSpeed <= 15) {
+                        state.scrollSpeed = s.scrollSpeed;
+                    } else {
+                        var sp = computeScrollSpeedFromBpm(s.bpm);
+                        if (sp) state.scrollSpeed = sp;
+                    }
+                    if (typeof s.countIn === 'number' && s.countIn >= 0 && s.countIn <= 15) {
+                        state.countInSeconds = s.countIn;
+                    }
+                }
                 render();
             }
 
@@ -3035,10 +3046,14 @@
                 if (byId('btn-key-reset')) byId('btn-key-reset').onclick = function () { state.transposeSteps = 0; render(); };
 
                 if (byId('btn-autoscroll')) byId('btn-autoscroll').onclick = toggleAutoScroll;
-                if (byId('range-speed')) byId('range-speed').oninput = function (e) { state.scrollSpeed = Number(e.target.value); };
+                if (byId('range-speed')) byId('range-speed').oninput = function (e) {
+                    state.scrollSpeed = Number(e.target.value);
+                    updateActiveSong({ scrollSpeed: state.scrollSpeed });
+                };
                 if (byId('count-in-input')) byId('count-in-input').oninput = function (e) {
                     var v = Number(e.target.value);
                     state.countInSeconds = isNaN(v) ? 0 : Math.max(0, Math.min(15, v));
+                    updateActiveSong({ countIn: state.countInSeconds });
                 };
                 if (byId('btn-cancel-countdown')) byId('btn-cancel-countdown').onclick = function () { stopCountdown(); render(); };
                 if (byId('countdown-overlay')) byId('countdown-overlay').onclick = function (e) { if (e.target.id === 'countdown-overlay') { stopCountdown(); render(); } };
@@ -3186,9 +3201,11 @@
                 if (editKey) editKey.oninput = function (e) { updateActiveSong({ key: e.target.value }); refreshSidebarLabelsSoft(); };
                 var editBpm = byId('edit-bpm');
                 if (editBpm) editBpm.oninput = function (e) {
-                    updateActiveSong({ bpm: e.target.value });
-                    refreshSidebarLabelsSoft();
                     var sp = computeScrollSpeedFromBpm(e.target.value);
+                    var bpmPatch = { bpm: e.target.value };
+                    if (sp) bpmPatch.scrollSpeed = sp;
+                    updateActiveSong(bpmPatch);
+                    refreshSidebarLabelsSoft();
                     if (sp) {
                         state.scrollSpeed = sp;
                         var slider = byId('range-speed');
