@@ -2685,7 +2685,6 @@
                     html += '<input class="speed-slider" style="width:44px;" type="number" min="0" max="15" value="' + state.countInSeconds + '" id="count-in-input" />';
                     html += '<span class="label-sm">s</span></div>';
 
-                    html += '<div class="tool-group"><span class="label-sm">Aa</span><input class="fontsize-slider" type="range" min="12" max="36" value="' + state.fontSize + '" id="range-font" /></div>';
 
                     html += '<div class="tool-group"><span class="label-sm">Chords</span>';
                     html += '<button class="tool-btn wide' + (state.chordInstrument === 'guitar' ? ' on' : '') + '" id="btn-inst-guitar" title="Ipakita ang guitar chord diagrams">Guitar</button>';
@@ -2696,8 +2695,6 @@
                 }
                 html += '<div class="spacer"></div>';
                 html += '<button class="icon-btn" id="btn-tuner" style="background:var(--gold);color:var(--on-accent);border-color:var(--gold);font-weight:700;">\uD83C\uDFB8 Tuner</button>';
-                html += '<button class="icon-btn" id="btn-import-top">Import</button>';
-                html += '<button class="icon-btn" id="btn-import-url-top">\uD83D\uDD17 URL</button>';
                 if (song) {
                     html += '<button class="icon-btn" id="btn-export">Export</button>';
                     html += '<button class="icon-btn" id="btn-delete" style="color:var(--danger);">Delete</button>';
@@ -3015,10 +3012,8 @@
                 var fileInput = byId('file-input');
                 if (fileInput) fileInput.onchange = handleImportFile;
                 if (byId('btn-import-side')) byId('btn-import-side').onclick = function () { fileInput.click(); };
-                if (byId('btn-import-top')) byId('btn-import-top').onclick = function () { fileInput.click(); };
 
                 if (byId('btn-import-url-side')) byId('btn-import-url-side').onclick = openUrlImport;
-                if (byId('btn-import-url-top')) byId('btn-import-url-top').onclick = openUrlImport;
                 if (byId('btn-cancel-urlimport')) byId('btn-cancel-urlimport').onclick = closeUrlImport;
                 if (byId('btn-confirm-urlimport')) byId('btn-confirm-urlimport').onclick = handleImportFromUrl;
                 if (byId('urlimport-overlay')) byId('urlimport-overlay').onclick = function (e) { if (e.target.id === 'urlimport-overlay') closeUrlImport(); };
@@ -3047,15 +3042,6 @@
                 };
                 if (byId('btn-cancel-countdown')) byId('btn-cancel-countdown').onclick = function () { stopCountdown(); render(); };
                 if (byId('countdown-overlay')) byId('countdown-overlay').onclick = function (e) { if (e.target.id === 'countdown-overlay') { stopCountdown(); render(); } };
-                if (byId('range-font')) byId('range-font').oninput = function (e) {
-                    state.fontSize = Number(e.target.value);
-                    var chart = document.querySelector('.chart');
-                    if (chart) chart.style.fontSize = state.fontSize + 'px';
-                    var editBodyEl = byId('edit-body');
-                    var editBackdropEl = byId('edit-body-backdrop');
-                    if (editBodyEl) editBodyEl.style.fontSize = state.fontSize + 'px';
-                    if (editBackdropEl) editBackdropEl.style.fontSize = state.fontSize + 'px';
-                };
 
                 // Touch handling on the lyrics area does two things:
                 // 1) Tracks whether the user currently has a finger down, so autoscroll
