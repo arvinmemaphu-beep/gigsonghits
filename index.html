@@ -231,6 +231,19 @@
   .song-meta input:focus{ outline:none; color:var(--teal); }
   .bpm-input{ background: var(--surface-2) !important; border:1px solid var(--teal) !important; color: var(--teal) !important; border-radius:6px; padding:6px 8px !important; width:56px !important; }
   .bpm-input:focus{ outline:none; border-color: var(--teal) !important; color: var(--text) !important; }
+  .bpm-label{ display:flex; align-items:center; gap:8px; color:var(--text) !important; font-weight:700; }
+
+  .settings-wrap{ position:relative; }
+  .settings-btn{ font-size:15px; padding:7px 10px; }
+  .settings-btn.on{ border-color:var(--gold-dim); color:var(--gold); }
+  .settings-menu{ position:absolute; top:calc(100% + 6px); right:0; background:var(--surface); border:1px solid var(--line); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.35); z-index:60; display:flex; flex-direction:column; min-width:170px; overflow:hidden; padding:4px; }
+  .settings-item{ background:none; border:none; color:var(--text); text-align:left; padding:10px 12px; font-size:13px; border-radius:5px; display:flex; align-items:center; gap:8px; }
+  .settings-item:hover{ background:rgba(var(--gold-rgb), 0.15); color:var(--gold); }
+  .settings-item.danger{ color:var(--danger); }
+  .settings-item.danger:hover{ background:rgba(201,98,86,0.15); color:var(--danger); }
+  .settings-divider{ height:1px; background:var(--line); margin:4px 2px; }
+  .save-btn{ background:var(--teal) !important; border-color:var(--teal) !important; color:#0f1f1e !important; font-weight:700; }
+  .save-btn:hover{ filter:brightness(1.08); color:#0f1f1e !important; }
   .folder-select{ background: var(--surface-2); border:1px solid var(--gold-dim); color: var(--gold); font-family:inherit; font-size:12px; letter-spacing:0.5px; text-transform:uppercase; padding:6px 8px; border-radius:6px; max-width:150px; }
   .folder-select:focus{ outline:none; border-color: var(--gold); }
   .folder-new-row{ display:inline-flex; gap:6px; align-items:center; }
@@ -810,6 +823,9 @@
                 fontSize: 19,
                 sidebarOpen: true,
                 confirmDelete: null,
+                settingsMenuOpen: false,
+                changeFolderOpen: false,
+                changeFolderNewFolder: false,
                 renamingFolder: null,
                 confirmDeleteFolder: null,
                 editorNewFolder: false,
@@ -2577,7 +2593,8 @@
             function hasOverlayOpen() {
                 return !!(state.chordModal || state.confirmDelete || state.confirmDeleteFolder ||
                     state.urlImportOpen || state.sharedModalOpen || state.shareModalOpen ||
-                    state.folderBrowseOpen || state.editorNewFolder || state.renamingFolder || state.addingFolder);
+                    state.folderBrowseOpen || state.editorNewFolder || state.renamingFolder || state.addingFolder ||
+                    state.settingsMenuOpen || state.changeFolderOpen);
             }
 
             function computeNavLevel() {
@@ -2592,6 +2609,8 @@
             // (overlay > mobile sidebar > edit mode > folder view), so a single back
             // press always undoes a single visible change.
             function closeTopOverlay() {
+                if (state.settingsMenuOpen) { state.settingsMenuOpen = false; return; }
+                if (state.changeFolderOpen) { state.changeFolderOpen = false; state.changeFolderNewFolder = false; return; }
                 if (state.chordModal) { state.chordModal = null; return; }
                 if (state.confirmDelete) { state.confirmDelete = null; return; }
                 if (state.confirmDeleteFolder) { state.confirmDeleteFolder = null; return; }
@@ -2692,7 +2711,7 @@
                     html += '<div class="tool-group"><button class="tool-btn wide' + (state.autoScroll ? ' on' : '') + '" id="btn-autoscroll">' + (state.countdownRemaining != null ? '\u23F1 ' + state.countdownRemaining + '\u2026' : (state.autoScroll ? '\u23F8 SCROLLING' : '\u25B6 SCROLL')) + '</button>';
                     html += '<span class="label-sm" style="margin-left:6px;">Speed</span>';
                     html += '<input class="speed-slider" type="range" min="1" max="15" value="' + state.scrollSpeed + '" id="range-speed" />';
-                    html += '<span class="label-sm" style="margin-left:6px;">Count-in</span>';
+                    html += '<span class="label-sm" style="margin-left:6px;">Intro</span>';
                     html += '<input class="speed-slider" style="width:44px;" type="number" min="0" max="15" value="' + state.countInSeconds + '" id="count-in-input" />';
                     html += '<span class="label-sm">s</span></div>';
 
@@ -2700,9 +2719,23 @@
                 }
                 html += '<div class="spacer"></div>';
                 if (song) {
-                    html += '<div class="tool-group"><button class="tool-btn wide' + (state.mode === 'edit' ? ' on' : '') + '" id="btn-toggle-mode">' + (state.mode === 'edit' ? 'DONE' : 'EDIT') + '</button></div>';
-                    html += '<button class="icon-btn" id="btn-export">Export</button>';
-                    html += '<button class="icon-btn" id="btn-delete" style="color:var(--danger);">Delete</button>';
+                    if (state.mode === 'edit') {
+                        html += '<button class="icon-btn save-btn" id="btn-save-edit">\uD83D\uDCBE SAVE</button>';
+                    }
+                    html += '<div class="settings-wrap">';
+                    html += '<button class="icon-btn settings-btn' + (state.settingsMenuOpen ? ' on' : '') + '" id="btn-settings" title="Settings">\u2699\uFE0F</button>';
+                    if (state.settingsMenuOpen) {
+                        html += '<div class="settings-menu" id="settings-menu">';
+                        if (state.mode !== 'edit') {
+                            html += '<button class="settings-item" id="btn-toggle-mode">\u270F\uFE0F Edit</button>';
+                        }
+                        html += '<button class="settings-item" id="btn-change-folder">\uD83D\uDCC1 Change Folder</button>';
+                        html += '<button class="settings-item" id="btn-export">\u2B07 Export</button>';
+                        html += '<div class="settings-divider"></div>';
+                        html += '<button class="settings-item danger" id="btn-delete">\uD83D\uDDD1 Delete</button>';
+                        html += '</div>';
+                    }
+                    html += '</div>';
                 }
                 html += '  </div>';
 
@@ -2720,21 +2753,9 @@
                 } else {
                     html += '<div class="editor-wrap">';
                     html += '<div class="song-title-row"><input class="title-input" id="edit-title" value="' + escapeHtml(song.title) + '" placeholder="Song title" /></div>';
-                    var folderOpts = getFolders();
-                    var currentFolderVal = song.folder || 'Gig';
-                    if (folderOpts.indexOf(currentFolderVal) === -1) folderOpts.push(currentFolderVal);
-                    html += '<div class="song-meta"><span>Key: <input id="edit-key" value="' + escapeHtml(song.key || '') + '" style="width:40px;" /></span><span>BPM: <input id="edit-bpm" class="bpm-input" value="' + escapeHtml(song.bpm || '') + '" /></span><span>Folder: ';
-                    if (state.editorNewFolder) {
-                        html += '<span class="folder-new-row"><input id="edit-folder-new-input" placeholder="Bagong folder" maxlength="40" /><button id="btn-editor-newfolder-confirm">Add</button><button class="cancel-x" id="btn-editor-newfolder-cancel">\u2715</button></span>';
-                    } else {
-                        html += '<select id="edit-folder" class="folder-select">';
-                        folderOpts.forEach(function (f) {
-                            html += '<option value="' + escapeHtml(f) + '"' + (f === currentFolderVal ? ' selected' : '') + '>' + escapeHtml(f) + '</option>';
-                        });
-                        html += '<option value="__new__">+ New folder\u2026</option>';
-                        html += '</select>';
-                    }
-                    html += '</span></div>';
+                    html += '<input id="edit-key" value="' + escapeHtml(song.key || '') + '" style="display:none;" />';
+                    html += '<input id="edit-folder" value="' + escapeHtml(song.folder || 'Gig') + '" style="display:none;" />';
+                    html += '<div class="song-meta"><span class="bpm-label">BPM <input id="edit-bpm" class="bpm-input" value="' + escapeHtml(song.bpm || '') + '" /></span></div>';
                     html += '<p class="editor-hint">Ilagay ang chords sa loob ng brackets bago ang syllable, hal. <code>[G]Sana\'y di na lang</code>. Pwede ring gumawa ng hiwalay na linya ng chords sa itaas ng lyrics.</p>';
                     html += '<div class="editor-highlight-wrap">';
                     html += '<textarea class="editor" id="edit-body" spellcheck="false" style="font-size:' + state.fontSize + 'px;">' + escapeHtml(song.body) + '</textarea>';
@@ -2752,6 +2773,27 @@
                     html += '<div class="confirm-overlay" id="confirm-overlay"><div class="confirm-box">';
                     html += '<p>Alisin ang kantang ito sa setlist? Hindi na maibabalik.</p>';
                     html += '<div class="confirm-row"><button id="btn-cancel-delete">Cancel</button><button class="danger-btn" id="btn-confirm-delete">Delete</button></div>';
+                    html += '</div></div>';
+                }
+
+                if (state.changeFolderOpen) {
+                    var cfSong = getActiveSong();
+                    var cfFolderOpts = getFolders();
+                    var cfCurrentVal = (cfSong && cfSong.folder) || 'Gig';
+                    if (cfFolderOpts.indexOf(cfCurrentVal) === -1) cfFolderOpts.push(cfCurrentVal);
+                    html += '<div class="confirm-overlay" id="changefolder-overlay"><div class="confirm-box">';
+                    html += '<p>Ilipat sa aling folder?</p>';
+                    if (state.changeFolderNewFolder) {
+                        html += '<div class="folder-new-row"><input id="changefolder-new-input" placeholder="Bagong folder" maxlength="40" /><button id="btn-changefolder-newfolder-confirm">Add</button><button class="cancel-x" id="btn-changefolder-newfolder-cancel">\u2715</button></div>';
+                    } else {
+                        html += '<select id="changefolder-select" class="folder-select">';
+                        cfFolderOpts.forEach(function (f) {
+                            html += '<option value="' + escapeHtml(f) + '"' + (f === cfCurrentVal ? ' selected' : '') + '>' + escapeHtml(f) + '</option>';
+                        });
+                        html += '<option value="__new__">+ New folder\u2026</option>';
+                        html += '</select>';
+                        html += '<div class="confirm-row"><button id="btn-changefolder-cancel">Cancel</button><button class="danger-btn" id="btn-changefolder-apply" style="background:var(--teal);border-color:var(--teal);">Apply</button></div>';
+                    }
                     html += '</div></div>';
                 }
 
@@ -3112,8 +3154,9 @@
                     }, { passive: true });
                 }
 
-                if (byId('btn-toggle-mode')) byId('btn-toggle-mode').onclick = function () {
+                var toggleModeHandler = function () {
                     state.mode = state.mode === 'edit' ? 'view' : 'edit';
+                    state.settingsMenuOpen = false;
                     state.editorNewFolder = false;
                     if (state.mode === 'edit') {
                         // Auto-scroll has no business running while the person is editing lyrics.
@@ -3125,6 +3168,8 @@
                     render();
                     if (state.mode === 'edit') focusTitleInput();
                 };
+                if (byId('btn-toggle-mode')) byId('btn-toggle-mode').onclick = toggleModeHandler;
+                if (byId('btn-save-edit')) byId('btn-save-edit').onclick = toggleModeHandler;
 
                 if (byId('btn-share-folder')) byId('btn-share-folder').onclick = openShareFolder;
                 if (byId('btn-share-close')) byId('btn-share-close').onclick = closeShareModal;
@@ -3172,8 +3217,62 @@
                     };
                 });
 
-                if (byId('btn-export')) byId('btn-export').onclick = handleExport;
-                if (byId('btn-delete')) byId('btn-delete').onclick = function () { state.confirmDelete = state.activeId; render(); };
+                if (byId('btn-settings')) byId('btn-settings').onclick = function (e) {
+                    e.stopPropagation();
+                    state.settingsMenuOpen = !state.settingsMenuOpen;
+                    render();
+                };
+                if (byId('btn-change-folder')) byId('btn-change-folder').onclick = function () {
+                    state.settingsMenuOpen = false;
+                    state.changeFolderOpen = true;
+                    state.changeFolderNewFolder = false;
+                    render();
+                };
+                if (byId('changefolder-select')) byId('changefolder-select').onchange = function (e) {
+                    if (e.target.value === '__new__') {
+                        state.changeFolderNewFolder = true;
+                        render();
+                        var nf = byId('changefolder-new-input');
+                        if (nf) nf.focus();
+                    }
+                };
+                if (byId('btn-changefolder-apply')) byId('btn-changefolder-apply').onclick = async function () {
+                    var sel = byId('changefolder-select');
+                    var val = sel ? sel.value.trim() || 'Gig' : 'Gig';
+                    if (val === '__new__') return;
+                    await updateActiveSong({ folder: val });
+                    await ensureFolder(val);
+                    state.currentFolder = val;
+                    state.changeFolderOpen = false;
+                    render();
+                    refreshSidebarLabelsSoft();
+                    showToast('Nailipat sa "' + val + '"');
+                };
+                if (byId('btn-changefolder-cancel')) byId('btn-changefolder-cancel').onclick = function () { state.changeFolderOpen = false; render(); };
+                if (byId('btn-changefolder-newfolder-confirm')) byId('btn-changefolder-newfolder-confirm').onclick = async function () {
+                    var inp = byId('changefolder-new-input');
+                    var val = inp ? inp.value.trim() : '';
+                    if (!val) { state.changeFolderNewFolder = false; render(); return; }
+                    await updateActiveSong({ folder: val });
+                    await ensureFolder(val);
+                    state.currentFolder = val;
+                    state.changeFolderNewFolder = false;
+                    state.changeFolderOpen = false;
+                    render();
+                    showToast('Folder "' + val + '" added');
+                };
+                if (byId('btn-changefolder-newfolder-cancel')) byId('btn-changefolder-newfolder-cancel').onclick = function () { state.changeFolderNewFolder = false; render(); };
+                var changeFolderNewInput = byId('changefolder-new-input');
+                if (changeFolderNewInput) {
+                    changeFolderNewInput.onkeydown = function (e) {
+                        if (e.key === 'Enter') { e.preventDefault(); byId('btn-changefolder-newfolder-confirm').click(); }
+                        if (e.key === 'Escape') { state.changeFolderNewFolder = false; render(); }
+                    };
+                }
+                if (byId('changefolder-overlay')) byId('changefolder-overlay').onclick = function (e) { if (e.target.id === 'changefolder-overlay') { state.changeFolderOpen = false; render(); } };
+
+                if (byId('btn-export')) byId('btn-export').onclick = function () { state.settingsMenuOpen = false; handleExport(); };
+                if (byId('btn-delete')) byId('btn-delete').onclick = function () { state.settingsMenuOpen = false; state.confirmDelete = state.activeId; render(); };
                 if (byId('btn-cancel-delete')) byId('btn-cancel-delete').onclick = function () { state.confirmDelete = null; render(); };
                 if (byId('btn-confirm-delete')) byId('btn-confirm-delete').onclick = function () { deleteSong(state.confirmDelete); };
                 if (byId('confirm-overlay')) byId('confirm-overlay').onclick = function (e) { if (e.target.id === 'confirm-overlay') { state.confirmDelete = null; render(); } };
@@ -3283,6 +3382,10 @@
                 var el = e.target;
                 if (el && el.classList && el.classList.contains('chord-tok')) {
                     state.chordModal = el.getAttribute('data-chord');
+                    render();
+                }
+                if (state.settingsMenuOpen && !(el.closest && el.closest('.settings-wrap'))) {
+                    state.settingsMenuOpen = false;
                     render();
                 }
             });
