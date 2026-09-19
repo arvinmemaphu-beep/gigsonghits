@@ -1462,6 +1462,7 @@
                 state.mode = 'edit';
                 state.transposeSteps = 0;
                 state.sidebarView = 'folderSongs';
+                state.sidebarOpen = false;
                 if (!wasAllSongs) state.currentFolder = targetFolder;
                 await ensureFolder(targetFolder);
                 await persistSong(song);
@@ -1786,6 +1787,7 @@
                         }
                         state.sidebarView = 'folderSongs';
                         state.currentFolder = targetFolder;
+                        state.sidebarOpen = false;
                         render();
                         showToast('\u2713 Na-import ang ' + jsonResult.count + ' kanta mula sa JSON');
                     } else if (/\.(docx|pptx)$/i.test(name)) {
@@ -1796,6 +1798,7 @@
                         state.activeId = officeResult.id; state.mode = 'view'; state.transposeSteps = 0;
                         state.sidebarView = 'folderSongs';
                         state.currentFolder = targetFolder;
+                        state.sidebarOpen = false;
                         render();
                         showToast('\u2713 Na-import na: "' + officeTitle + '"');
                     } else if (/\.html?$/i.test(name)) {
@@ -1807,6 +1810,7 @@
                         state.activeId = htmlResult.id; state.mode = 'view'; state.transposeSteps = 0;
                         state.sidebarView = 'folderSongs';
                         state.currentFolder = targetFolder;
+                        state.sidebarOpen = false;
                         render();
                         showToast('\u2713 Na-import na: "' + htmlTitle + '"');
                     } else {
@@ -1817,6 +1821,7 @@
                         state.activeId = result.id; state.mode = 'view'; state.transposeSteps = 0;
                         state.sidebarView = 'folderSongs';
                         state.currentFolder = targetFolder;
+                        state.sidebarOpen = false;
                         render();
                         showToast('\u2713 Na-import na: "' + title + '"');
                     }
