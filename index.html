@@ -203,6 +203,19 @@
   .toolbar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding: 10px 18px; border-bottom:1px solid var(--line); background:var(--surface); }
   .mobile-toggle{ display:none; background:none; border:1px solid var(--line); color:var(--text); border-radius:5px; width:34px; height:34px; }
   @media (max-width:800px){ .mobile-toggle{ display:block; } }
+  @media (max-width:800px){
+    .toolbar{ gap:6px; padding:8px 10px; row-gap:6px; }
+    .tool-group-key{ gap:2px; padding:3px 5px; }
+    .tool-group-key .label-sm{ display:none; }
+    .tool-group-key .key-display{ min-width:26px; font-size:16px; padding:0 1px; }
+    .tool-group-key .tool-btn{ width:24px; height:24px; font-size:13px; }
+    .mobile-toggle{ order:1; }
+    .tool-group-key{ order:2; }
+    .save-btn{ order:3; padding:6px 8px; font-size:10px; }
+    .settings-wrap{ order:4; }
+    .spacer{ order:5; flex-basis:100%; height:0; margin:0; }
+    .tool-group-scroll{ order:6; flex-basis:100%; justify-content:space-between; }
+  }
 
   .tool-group{ display:flex; align-items:center; gap:6px; background:var(--surface-2); border:1px solid var(--line); border-radius:7px; padding:4px; }
   .tool-btn{ background:transparent; border:none; color:var(--text); width:30px; height:30px; border-radius:5px; font-size:15px; font-weight:600; display:flex; align-items:center; justify-content:center; }
@@ -242,8 +255,8 @@
   .settings-item.danger{ color:var(--danger); }
   .settings-item.danger:hover{ background:rgba(201,98,86,0.15); color:var(--danger); }
   .settings-divider{ height:1px; background:var(--line); margin:4px 2px; }
-  .save-btn{ background:var(--teal) !important; border-color:var(--teal) !important; color:#0f1f1e !important; font-weight:700; }
-  .save-btn:hover{ filter:brightness(1.08); color:#0f1f1e !important; }
+  .save-btn{ background:#FFFFFF !important; border-color:#FFFFFF !important; color:#141210 !important; font-weight:700; }
+  .save-btn:hover{ filter:brightness(0.95); color:#141210 !important; }
   .folder-select{ background: var(--surface-2); border:1px solid var(--gold-dim); color: var(--gold); font-family:inherit; font-size:12px; letter-spacing:0.5px; text-transform:uppercase; padding:6px 8px; border-radius:6px; max-width:150px; }
   .folder-select:focus{ outline:none; border-color: var(--gold); }
   .folder-new-row{ display:inline-flex; gap:6px; align-items:center; }
@@ -2701,14 +2714,14 @@
                 html += '  <div class="toolbar">';
                 html += '    <button class="mobile-toggle" id="btn-toggle-sidebar">\u2630</button>';
                 if (song) {
-                    html += '<div class="tool-group"><span class="label-sm">Key</span>';
+                    html += '<div class="tool-group tool-group-key"><span class="label-sm">Key</span>';
                     html += '<button class="tool-btn" id="btn-key-down">\u2212</button>';
                     html += '<span class="key-display">' + displayedKey + '</span>';
                     html += '<button class="tool-btn" id="btn-key-up">+</button>';
                     if (state.transposeSteps !== 0) html += '<button class="tool-btn" id="btn-key-reset" style="font-size:11px;">0</button>';
                     html += '</div>';
 
-                    html += '<div class="tool-group"><button class="tool-btn wide' + (state.autoScroll ? ' on' : '') + '" id="btn-autoscroll">' + (state.countdownRemaining != null ? '\u23F1 ' + state.countdownRemaining + '\u2026' : (state.autoScroll ? '\u23F8 SCROLLING' : '\u25B6 SCROLL')) + '</button>';
+                    html += '<div class="tool-group tool-group-scroll"><button class="tool-btn wide' + (state.autoScroll ? ' on' : '') + '" id="btn-autoscroll">' + (state.countdownRemaining != null ? '\u23F1 ' + state.countdownRemaining + '\u2026' : (state.autoScroll ? '\u23F8 SCROLLING' : '\u25B6 SCROLL')) + '</button>';
                     html += '<span class="label-sm" style="margin-left:6px;">Speed</span>';
                     html += '<input class="speed-slider" type="range" min="1" max="15" value="' + state.scrollSpeed + '" id="range-speed" />';
                     html += '<span class="label-sm" style="margin-left:6px;">Intro</span>';
