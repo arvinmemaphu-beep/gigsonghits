@@ -2607,7 +2607,8 @@
                 return !!(state.chordModal || state.confirmDelete || state.confirmDeleteFolder ||
                     state.urlImportOpen || state.sharedModalOpen || state.shareModalOpen ||
                     state.folderBrowseOpen || state.editorNewFolder || state.renamingFolder || state.addingFolder ||
-                    state.settingsMenuOpen || state.changeFolderOpen);
+                    state.settingsMenuOpen || state.changeFolderOpen || state.themeModalOpen || state.tunerOpen ||
+                    state.folderBrowseConfirmAllOpen || state.sharedConfirmAllOpen);
             }
 
             function computeNavLevel() {
@@ -2624,9 +2625,13 @@
             function closeTopOverlay() {
                 if (state.settingsMenuOpen) { state.settingsMenuOpen = false; return; }
                 if (state.changeFolderOpen) { state.changeFolderOpen = false; state.changeFolderNewFolder = false; return; }
+                if (state.tunerOpen) { stopTunerListening(); stopReferenceTone(); state.tunerOpen = false; return; }
+                if (state.themeModalOpen) { state.themeModalOpen = false; return; }
                 if (state.chordModal) { state.chordModal = null; return; }
                 if (state.confirmDelete) { state.confirmDelete = null; return; }
                 if (state.confirmDeleteFolder) { state.confirmDeleteFolder = null; return; }
+                if (state.folderBrowseConfirmAllOpen) { state.folderBrowseConfirmAllOpen = false; return; }
+                if (state.sharedConfirmAllOpen) { state.sharedConfirmAllOpen = false; return; }
                 if (state.urlImportOpen) { state.urlImportOpen = false; state.urlImportBusy = false; state.urlImportError = null; return; }
                 if (state.sharedModalOpen) { state.sharedModalOpen = false; return; }
                 if (state.shareModalOpen) { state.shareModalOpen = false; return; }
