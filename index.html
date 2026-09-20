@@ -475,47 +475,54 @@
             // {chord, lyric} units. Each unit is rendered as one inline-flex block, so the
             // browser can only wrap *between* units — a chord can never separate from the
             // syllable it belongs to, no matter the screen width, zoom level, or font size.
+            function chordTokTopHtml(tok) {
+                return tok.isChord
+                    ? '<span class="chord-tok" data-chord="' + escapeHtml(tok.text) + '">' + escapeHtml(tok.text) + '</span>'
+                    : '<span class="cw-marker">' + escapeHtml(tok.text) + '</span>';
+            }
+
+            // Pairs a chord-line with the lyric-line under it. Rather than requiring the
+            // chord's column to fall exactly before the word it belongs to (which breaks the
+            // moment someone eyeballs the alignment slightly off, or lands a chord above the
+            // middle of a syllable — a very common way people actually type chord sheets),
+            // each word "owns" every character column from its own start up to the start of
+            // the next word. A chord is bucketed into whichever word's zone its column falls
+            // in, so near-enough alignment still pairs correctly.
             function buildPairedLineHtml(chordLine, lyricLine) {
                 var tokRe = /\S+/g;
-                var chordEvents = [];
                 var cm;
+                var chordTokens = [];
                 while ((cm = tokRe.exec(chordLine)) !== null) {
-                    var ctok = cm[0];
-                    chordEvents.push({ type: CHORD_WORD_RE.test(ctok) ? 'chord' : 'marker', col: cm.index, text: ctok });
+                    chordTokens.push({ col: cm.index, text: cm[0], isChord: CHORD_WORD_RE.test(cm[0]) });
                 }
-                var wordEvents = [];
                 var wordRe = /\S+/g;
                 var wm;
+                var words = [];
                 while ((wm = wordRe.exec(lyricLine)) !== null) {
-                    wordEvents.push({ type: 'word', col: wm.index, text: wm[0] });
+                    words.push({ col: wm.index, text: wm[0] });
                 }
-                var events = chordEvents.concat(wordEvents).sort(function (a, b) { return a.col - b.col; });
-                var units = [];
-                var pending = null;
-                for (var i = 0; i < events.length; i++) {
-                    var ev = events[i];
-                    if (ev.type === 'word') {
-                        units.push({ tokType: pending ? pending.type : null, tok: pending ? pending.text : null, lyric: ev.text });
-                        pending = null;
-                    } else {
-                        if (pending) units.push({ tokType: pending.type, tok: pending.text, lyric: '' });
-                        pending = ev;
-                    }
-                }
-                if (pending) units.push({ tokType: pending.type, tok: pending.text, lyric: '' });
-                if (units.length === 0) return '';
+                if (chordTokens.length === 0 && words.length === 0) return '';
                 var html = '<div class="chord-pair-line">';
-                for (var u = 0; u < units.length; u++) {
-                    var unit = units[u];
-                    var topHtml = '&nbsp;';
-                    if (unit.tok) {
-                        if (unit.tokType === 'chord') {
-                            topHtml = '<span class="chord-tok" data-chord="' + escapeHtml(unit.tok) + '">' + escapeHtml(unit.tok) + '</span>';
-                        } else {
-                            topHtml = '<span class="cw-marker">' + escapeHtml(unit.tok) + '</span>';
-                        }
+                if (words.length === 0) {
+                    // Chord-only line (e.g. an instrumental bar) — one standalone unit per chord.
+                    for (var c0 = 0; c0 < chordTokens.length; c0++) {
+                        html += '<span class="cw-unit"><span class="cw-chord">' + chordTokTopHtml(chordTokens[c0]) + '</span><span class="cw-lyric">&nbsp;</span></span>';
                     }
-                    html += '<span class="cw-unit"><span class="cw-chord">' + topHtml + '</span><span class="cw-lyric">' + (unit.lyric ? escapeHtml(unit.lyric) : '&nbsp;') + '</span></span>';
+                    html += '</div>';
+                    return html;
+                }
+                // Bucket each chord into the word whose zone [word.col, nextWord.col) contains it.
+                var buckets = words.map(function () { return []; });
+                var wi = 0;
+                for (var ci = 0; ci < chordTokens.length; ci++) {
+                    var chordCol = chordTokens[ci].col;
+                    while (wi < words.length - 1 && chordCol >= words[wi + 1].col) wi++;
+                    buckets[wi].push(chordTokens[ci]);
+                }
+                for (var w = 0; w < words.length; w++) {
+                    var bucket = buckets[w];
+                    var topHtml = bucket.length ? bucket.map(chordTokTopHtml).join(' ') : '&nbsp;';
+                    html += '<span class="cw-unit"><span class="cw-chord">' + topHtml + '</span><span class="cw-lyric">' + escapeHtml(words[w].text) + '</span></span>';
                 }
                 html += '</div>';
                 return html;
@@ -1890,8 +1897,15 @@
                 cleaned = cleaned.replace(/<[^>]+>/g, '');
                 cleaned = decodeHtmlEntities(cleaned);
                 cleaned = cleaned.replace(/\r\n/g, '\n');
-                cleaned = cleaned.split('\n').map(function (l) { return l.replace(/[ \t]+$/, ''); }).join('\n');
-                cleaned = cleaned.replace(/[ \t]{2,}/g, ' ');
+                // Trim trailing whitespace and drop only large HTML-source indentation blocks —
+                // never collapse internal runs of spaces, since chord sheets rely on exactly
+                // those runs to align chords over specific lyric syllables.
+                cleaned = cleaned.split('\n').map(function (l) {
+                    l = l.replace(/[ \t]+$/, '');
+                    var lead = l.match(/^[ \t]+/);
+                    if (lead && lead[0].replace(/\t/g, '    ').length > 4) l = l.replace(/^[ \t]+/, '');
+                    return l;
+                }).join('\n');
                 cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
                 return { text: cleaned, title: pageTitle };
             }
@@ -2831,7 +2845,7 @@
                     html += '<div class="song-meta"><span class="bpm-label">BPM <input id="edit-bpm" class="bpm-input" value="' + escapeHtml(song.bpm || '') + '" /></span></div>';
                     html += '<p class="editor-hint">Ilagay ang chords sa loob ng brackets bago ang syllable, hal. <code>[G]Sana\'y di na lang</code>. Pwede ring gumawa ng hiwalay na linya ng chords sa itaas ng lyrics.</p>';
                     html += '<div class="editor-highlight-wrap">';
-                    html += '<textarea class="editor" id="edit-body" spellcheck="false" style="font-size:' + state.fontSize + 'px;">' + escapeHtml(song.body) + '</textarea>';
+                    html += '<textarea class="editor" id="edit-body" spellcheck="false" autocorrect="off" autocapitalize="off" autocomplete="off" style="font-size:' + state.fontSize + 'px;">' + escapeHtml(song.body) + '</textarea>';
                     html += '<div class="editor-backdrop" id="edit-body-backdrop" aria-hidden="true" style="font-size:' + state.fontSize + 'px;">' + renderEditorHtml(song.body) + '</div>';
                     html += '</div>';
                     html += '</div>';
@@ -3419,6 +3433,27 @@
                     editBody.oninput = function (e) {
                         updateActiveSong({ body: e.target.value });
                         if (editBodyBackdrop) editBodyBackdrop.innerHTML = renderEditorHtml(e.target.value);
+                    };
+                    // Chord sheets copied from other sites often carry non-breaking spaces or
+                    // other unicode space look-alikes (and sometimes tabs) instead of plain
+                    // spaces. Visually invisible, but they throw off chord/lyric alignment —
+                    // normalize them to plain spaces on paste so alignment behaves as typed.
+                    editBody.onpaste = function (e) {
+                        if (!e.clipboardData) return;
+                        var text = e.clipboardData.getData('text/plain');
+                        if (text == null) return;
+                        e.preventDefault();
+                        var cleaned = text
+                            .replace(/\r\n/g, '\n')
+                            .replace(/[\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000]/g, ' ')
+                            .replace(/\t/g, '    ');
+                        var start = editBody.selectionStart, end = editBody.selectionEnd;
+                        var val = editBody.value;
+                        editBody.value = val.slice(0, start) + cleaned + val.slice(end);
+                        var newPos = start + cleaned.length;
+                        editBody.selectionStart = editBody.selectionEnd = newPos;
+                        updateActiveSong({ body: editBody.value });
+                        if (editBodyBackdrop) editBodyBackdrop.innerHTML = renderEditorHtml(editBody.value);
                     };
                     editBody.onscroll = function () {
                         if (editBodyBackdrop) {
