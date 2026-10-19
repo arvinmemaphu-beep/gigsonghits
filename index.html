@@ -291,15 +291,15 @@
   .chord-modal .inst-btn:hover{ border-color:var(--gold-dim); }
   .chord-modal .inst-btn.on{ background:var(--gold); border-color:var(--gold); color:var(--on-accent); font-weight:700; }
 
-  .tuner-modal{ background: var(--surface); border:1px solid var(--line); border-radius:14px; padding:24px 28px 22px; width:420px; max-width:92vw; text-align:center; box-shadow: 0 16px 40px rgba(0,0,0,0.5); }
+  .tuner-modal{ background: var(--surface); border:1px solid var(--line); border-radius:14px; padding:20px 24px 18px; width:420px; max-width:92vw; max-height:94vh; overflow-y:auto; text-align:center; box-shadow: 0 16px 40px rgba(0,0,0,0.5); }
   .tuner-modal h3{ margin:0 0 12px; font-size:18px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text); }
   .tuner-inst-toggle{ display:flex; gap:6px; background:var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:4px; margin-bottom:16px; }
   .tuner-inst-toggle button{ flex:1; background:transparent; border:none; color:var(--muted); padding:9px 4px; border-radius:6px; font-size:13px; letter-spacing:1px; text-transform:uppercase; font-weight:600; }
   .tuner-inst-toggle button.on{ background:var(--gold); color:var(--on-accent); }
-  .tuner-readout{ background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:18px 12px 14px; margin-bottom:14px; min-height:190px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; }
-  .tuner-gauge-wrap{ position:relative; width:240px; max-width:100%; margin:0 auto; }
+  .tuner-readout{ background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:18px 12px 14px; margin-bottom:10px; min-height:150px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; }
+  .tuner-gauge-wrap{ position:relative; width:200px; max-width:100%; margin:0 auto; }
   .tuner-gauge-svg{ width:100%; height:auto; display:block; overflow:visible; }
-  .tuner-gauge-note{ position:absolute; left:50%; bottom:-6px; transform:translateX(-50%); font-size:52px; font-weight:800; color:var(--gold); line-height:1; font-family:'Roboto Mono',monospace; }
+  .tuner-gauge-note{ position:absolute; left:50%; bottom:-6px; transform:translateX(-50%); font-size:44px; font-weight:800; color:var(--gold); line-height:1; font-family:'Roboto Mono',monospace; }
   .tuner-gauge-note.flat{ color:#f2c94c; }
   .tuner-gauge-note.sharp{ color:#e5484d; }
   .tuner-gauge-note.in-tune{ color:#3fd66b; }
@@ -313,7 +313,7 @@
   circle.tuner-needle-line.in-tune{ fill:#3fd66b; }
   circle.tuner-needle-line.flat{ fill:#f2c94c; }
   circle.tuner-needle-line.sharp{ fill:#e5484d; }
-  .tuner-gauge-labels{ display:flex; justify-content:space-between; width:240px; max-width:100%; margin:2px auto 0; }
+  .tuner-gauge-labels{ display:flex; justify-content:space-between; width:200px; max-width:100%; margin:2px auto 0; }
   .tuner-gauge-labels span{ font-size:10px; letter-spacing:1px; color:var(--muted); text-transform:uppercase; }
   .tuner-hz{ font-size:14px; color:var(--muted); letter-spacing:1px; font-weight:600; margin-top:6px; }
   .tuner-readout.in-tune{ box-shadow: 0 0 0 2px #3fd66b inset; }
@@ -327,6 +327,18 @@
   .tuner-string-btn:hover{ border-color:var(--gold-dim); color:var(--gold); }
   .tuner-string-btn.active-string{ border-color:var(--gold); color:var(--gold); background:rgba(var(--gold-rgb), 0.12); }
   .tuner-hint{ color:var(--muted); font-size:11px; line-height:1.5; margin:0 0 6px; }
+  .tuner-dir{ font-size:13px; font-weight:700; color:var(--text); min-height:18px; margin-top:2px; letter-spacing:0.5px; }
+  .tuner-string-btn.locked{ background:var(--gold); color:var(--on-accent); border-color:var(--gold); }
+  .tuner-head-wrap{ position:relative; height:200px; margin:0 0 10px; }
+  .tuner-head-svg{ display:block; height:100%; width:auto; margin:0 auto; overflow:visible; }
+  .tuner-peg-btn{ position:absolute; width:42px; height:42px; border-radius:50%; padding:0; flex:none; font-size:16px; letter-spacing:0; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.07); border:1px solid var(--line); box-shadow:0 2px 6px rgba(0,0,0,0.4); }
+  .tuner-peg-btn.left{ left:0; }
+  .tuner-peg-btn.right{ right:0; }
+  .tuner-peg-btn.ts-in-tune{ background:#3fd66b; color:#04210f; border-color:#3fd66b; }
+  .tuner-peg-btn.ts-flat{ background:#f2c94c; color:#2b2100; border-color:#f2c94c; }
+  .tuner-peg-btn.ts-sharp{ background:#e5484d; color:#fff; border-color:#e5484d; }
+  .tuner-auto-pill{ width:100%; background:var(--surface-2); border:1px solid var(--line); color:var(--muted); border-radius:8px; padding:9px; font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px; }
+  .tuner-auto-pill.on{ border-color:var(--gold); color:var(--gold); background:rgba(var(--gold-rgb),0.12); }
 
   .editor-wrap{ display:flex; flex-direction:column; gap:10px; }
   .editor-highlight-wrap{ position:relative; width:100%; min-height:420px; }
@@ -878,6 +890,7 @@
                 chordInstrument: 'guitar', // which instrument's chord diagrams to show on tap: 'guitar' | 'ukulele'
                 tunerOpen: false,
                 tunerInstrument: 'guitar', // 'guitar' | 'ukulele'
+                tunerTarget: null, // null = AUTO, otherwise a string name like 'E2' (locked target)
                 tunerListening: false,
                 tunerError: null
             };
@@ -968,7 +981,7 @@
             // YIN pitch detector \u2014 the algorithm used by most dedicated tuner apps.
             // It's far more resistant to octave errors and noise than plain autocorrelation,
             // which is what was causing the needle to jump around unpredictably before.
-            function detectPitch(buffer, sampleRate) {
+            function detectPitch(buffer, sampleRate, minHz, maxHz) {
                 var size = buffer.length;
                 var rms = 0;
                 for (var i = 0; i < size; i++) { rms += buffer[i] * buffer[i]; }
@@ -979,7 +992,10 @@
                 var halfSize = Math.floor(size / 2);
                 // Only need to search tau values covering ~50Hz-1000Hz (guitar/ukulele range
                 // plus margin) to keep this fast enough to run several times a second.
-                var maxTau = Math.min(halfSize - 1, Math.round(sampleRate / 50));
+                var lowHz = minHz || 50;
+                var highHz = maxHz || 1000;
+                var maxTau = Math.min(halfSize - 1, Math.round(sampleRate / lowHz));
+                var minTau = Math.max(2, Math.floor(sampleRate / highHz));
                 var yinBuf = new Float32Array(maxTau + 1);
                 var runningSum = 0;
                 yinBuf[0] = 1;
@@ -993,13 +1009,24 @@
                     yinBuf[tau] = runningSum === 0 ? 1 : sum * tau / runningSum;
                 }
 
-                var threshold = 0.15;
+                // When a target string is locked we only look near that string's pitch,
+                // so a loose threshold is safe and lets very out-of-tune strings still register.
+                var threshold = (minHz && maxHz) ? 0.30 : 0.15;
                 var tauEstimate = -1;
-                for (var t = 2; t <= maxTau; t++) {
+                for (var t = minTau; t <= maxTau; t++) {
                     if (yinBuf[t] < threshold) {
                         while (t + 1 <= maxTau && yinBuf[t + 1] < yinBuf[t]) t++;
                         tauEstimate = t;
                         break;
+                    }
+                }
+                if (tauEstimate === -1 && minHz && maxHz) {
+                    // Fallback: take the deepest dip inside the target window
+                    var bestT = -1, bestV = 0.45;
+                    for (var u = minTau; u <= maxTau; u++) { if (yinBuf[u] < bestV) { bestV = yinBuf[u]; bestT = u; } }
+                    if (bestT !== -1) {
+                        while (bestT + 1 <= maxTau && yinBuf[bestT + 1] < yinBuf[bestT]) bestT++;
+                        tauEstimate = bestT;
                     }
                 }
                 if (tauEstimate === -1) return -1; // no clear periodicity found
@@ -1029,6 +1056,124 @@
                 return best;
             }
 
+            var TUNER_LAYOUT = {
+                guitar: {
+                    left:  [{ n: 'D3', y: 48 }, { n: 'A2', y: 98 }, { n: 'E2', y: 148 }],
+                    right: [{ n: 'G3', y: 48 }, { n: 'B3', y: 98 }, { n: 'E4', y: 148 }],
+                    nut: { D3: 95, A2: 90, E2: 85, G3: 105, B3: 110, E4: 115 },
+                    width: { E2: 1.9, A2: 1.6, D3: 1.4, G3: 1.1, B3: 0.9, E4: 0.8 },
+                    postL: 68, postR: 132, knobL: 36, knobR: 148, nutX1: 84, nutX2: 116,
+                    path: 'M84,204 L84,198 L56,160 L50,40 L62,10 L100,28 L138,10 L150,40 L144,160 L116,198 L116,204 Z',
+                    bolt: 'translate(0,0)'
+                },
+                ukulele: {
+                    left:  [{ n: 'C4', y: 62 }, { n: 'G4', y: 118 }],
+                    right: [{ n: 'E4', y: 62 }, { n: 'A4', y: 118 }],
+                    nut: { C4: 97, G4: 90, E4: 103, A4: 110 },
+                    width: { C4: 1.2, G4: 1.0, E4: 1.0, A4: 1.0 },
+                    postL: 80, postR: 120, knobL: 40, knobR: 144, nutX1: 86, nutX2: 114,
+                    path: 'M86,204 L86,160 Q58,140 60,96 Q58,28 100,14 Q142,28 140,96 Q142,140 114,160 L114,204 Z',
+                    bolt: 'translate(100,66) scale(.62) translate(-102,-70)'
+                }
+            };
+
+            // Rock-style headstock (guitar = 3+3, ukulele = 2+2). Drawn as inline SVG so no
+            // image files are needed and it follows the selected color theme (--gold).
+            function tunerHeadstockHtml() {
+                var L = TUNER_LAYOUT[state.tunerInstrument];
+                var tuning = TUNINGS[state.tunerInstrument];
+                var sel = state.tunerTarget;
+                function freqOf(n) { for (var i = 0; i < tuning.length; i++) { if (tuning[i].name === n) return tuning[i].freq; } return 0; }
+                var o = [];
+                o.push('<svg viewBox="0 0 200 230" class="tuner-head-svg" aria-hidden="true">');
+                o.push('<defs>');
+                o.push('<linearGradient id="ths-body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2d2d31"/><stop offset="1" stop-color="#0b0b0c"/></linearGradient>');
+                o.push('<linearGradient id="ths-chrome" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#85858b"/><stop offset=".45" stop-color="#fbfbfb"/><stop offset="1" stop-color="#76767c"/></linearGradient>');
+                o.push('<radialGradient id="ths-post" cx=".35" cy=".35" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#6f6f75"/></radialGradient>');
+                o.push('<filter id="ths-glow" x="-30%" y="-15%" width="160%" height="130%"><feGaussianBlur stdDeviation="3"/></filter>');
+                o.push('</defs>');
+                // fretboard + nut + frets
+                o.push('<rect x="' + L.nutX1 + '" y="204" width="' + (L.nutX2 - L.nutX1) + '" height="26" fill="#2a1d14"/>');
+                o.push('<line x1="' + L.nutX1 + '" y1="220" x2="' + L.nutX2 + '" y2="220" stroke="#8c8c92" stroke-width="1.2"/>');
+                // headstock: glow, body, inner trim
+                o.push('<path d="' + L.path + '" fill="none" stroke-width="5" stroke-linejoin="round" filter="url(#ths-glow)" style="stroke:var(--gold);opacity:.75"/>');
+                o.push('<path d="' + L.path + '" fill="url(#ths-body)" stroke-width="2.4" stroke-linejoin="round" style="stroke:var(--gold)"/>');
+                o.push('<path d="' + L.path + '" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="1" transform="translate(100,120) scale(.92) translate(-100,-120)"/>');
+                // lightning bolt decal
+                o.push('<polygon points="106,36 90,72 99,72 93,104 114,64 104,64 112,36" transform="' + L.bolt + '" style="fill:var(--gold)" opacity=".92"/>');
+                // nut
+                o.push('<rect x="' + L.nutX1 + '" y="202" width="' + (L.nutX2 - L.nutX1) + '" height="4" fill="#efe6cf"/>');
+                // strings (selected one drawn last / on top, in accent color)
+                var all = [];
+                L.left.forEach(function (it) { all.push({ it: it, x: L.postL }); });
+                L.right.forEach(function (it) { all.push({ it: it, x: L.postR }); });
+                all.sort(function (a, b) { return (a.it.n === sel ? 1 : 0) - (b.it.n === sel ? 1 : 0); });
+                all.forEach(function (a) {
+                    var isSel = a.it.n === sel;
+                    var w = L.width[a.it.n] || 1;
+                    o.push('<line x1="' + a.x + '" y1="' + a.it.y + '" x2="' + L.nut[a.it.n] + '" y2="230" stroke-linecap="round" ' +
+                        (isSel ? 'id="tuner-sel-string" stroke-width="' + (w + 0.9) + '" style="stroke:var(--gold)"' : 'stroke="#c9c9cf" stroke-opacity=".8" stroke-width="' + w + '"') + '/>');
+                });
+                // tuning machines (chrome post on headstock, shaft, knob outside the edge)
+                function peg(it, side) {
+                    var isSel = it.n === sel;
+                    var kx = side === 'L' ? L.knobL : L.knobR;
+                    var px = side === 'L' ? L.postL : L.postR;
+                    var sx = side === 'L' ? (L.knobL + 16) : L.postR;
+                    var sw = side === 'L' ? (L.postL - (L.knobL + 16)) : (L.knobR - L.postR);
+                    o.push('<rect x="' + sx + '" y="' + (it.y - 2) + '" width="' + sw + '" height="4" fill="url(#ths-chrome)"/>');
+                    o.push('<rect x="' + kx + '" y="' + (it.y - 11) + '" width="16" height="22" rx="5" fill="url(#ths-chrome)" ' +
+                        (isSel ? 'stroke-width="2" style="stroke:var(--gold)"' : 'stroke="#4a4a50" stroke-width=".8"') + '/>');
+                    o.push('<rect x="' + (kx + 3) + '" y="' + (it.y - 8) + '" width="4" height="16" rx="2" fill="#ffffff" opacity=".55"/>');
+                    o.push('<circle cx="' + px + '" cy="' + it.y + '" r="5.5" fill="url(#ths-post)" ' +
+                        (isSel ? 'stroke-width="1.6" style="stroke:var(--gold)"' : 'stroke="#3d3d42" stroke-width=".8"') + '/>');
+                }
+                L.left.forEach(function (it) { peg(it, 'L'); });
+                L.right.forEach(function (it) { peg(it, 'R'); });
+                o.push('</svg>');
+                // tappable round note buttons beside each peg
+                function btn(it, side) {
+                    return '<button class="tuner-string-btn tuner-peg-btn ' + side + (sel === it.n ? ' active-string locked' : '') +
+                        '" style="top:calc(' + (it.y / 230 * 100).toFixed(2) + '% - 21px);" data-string="' + it.n + '" data-freq="' + freqOf(it.n) + '">' +
+                        it.n.replace(/[0-9]/, '') + '</button>';
+                }
+                var b = '';
+                L.left.forEach(function (it) { b += btn(it, 'left'); });
+                L.right.forEach(function (it) { b += btn(it, 'right'); });
+                return '<div class="tuner-head-wrap">' + o.join('') + b + '</div>';
+            }
+
+            function getTunerTarget() {
+                if (!state.tunerTarget) return null;
+                var list = TUNINGS[state.tunerInstrument];
+                for (var i = 0; i < list.length; i++) { if (list[i].name === state.tunerTarget) return list[i]; }
+                return null;
+            }
+
+            function resetTunerSmoothing() {
+                tunerFreqHistory = [];
+                tunerSmoothedCents = null;
+                tunerPendingOutlierCents = null;
+                tunerDisplayState = 'flat';
+                tunerPendingState = null;
+                tunerPendingCount = 0;
+                tunerInTuneStreak = 0;
+                tunerChimePlayed = false;
+            }
+
+            // Tap a string = lock onto it (and hear its reference tone).
+            // Tap the same string again, or press AUTO, = back to automatic detection.
+            function selectTunerString(name, freq) {
+                if (state.tunerTarget === name) {
+                    state.tunerTarget = null;
+                } else {
+                    state.tunerTarget = name;
+                    playReferenceTone(freq);
+                }
+                resetTunerSmoothing();
+                render();
+            }
+
             function openTuner() {
                 state.tunerOpen = true;
                 state.tunerError = null;
@@ -1040,11 +1185,14 @@
                 stopTunerListening();
                 stopReferenceTone();
                 state.tunerOpen = false;
+                state.tunerTarget = null;
                 render();
             }
 
             function setTunerInstrument(inst) {
                 state.tunerInstrument = inst;
+                state.tunerTarget = null;
+                resetTunerSmoothing();
                 render();
             }
 
@@ -1088,7 +1236,12 @@
             function tunerLoop() {
                 if (!state.tunerListening || !tunerAnalyser) return;
                 tunerAnalyser.getFloatTimeDomainData(tunerDataBuffer);
-                var freq = detectPitch(tunerDataBuffer, tunerAudioCtx.sampleRate);
+                var tgt = getTunerTarget();
+                // Locked: search only from ~a fourth below to ~a fourth above the chosen string
+                // (covers a string that's a few semitones off). Auto: full range.
+                var freq = tgt
+                    ? detectPitch(tunerDataBuffer, tunerAudioCtx.sampleRate, tgt.freq * 0.72, tgt.freq * 1.4)
+                    : detectPitch(tunerDataBuffer, tunerAudioCtx.sampleRate);
                 if (freq === -1) {
                     tunerFreqHistory = [];
                     updateTunerReadout(-1);
@@ -1126,7 +1279,9 @@
                     // Rest position: parked on the left in yellow, like a physical clip-on
                     // tuner's needle hanging flat until a string is plucked \u2014 rather than
                     // sitting center or (worse) appearing to start from the sharp/red side.
-                    noteEl.textContent = '\u2014';
+                    noteEl.textContent = (getTunerTarget() ? getTunerTarget().name.replace(/[0-9]/, '') : '\u2014');
+                    var hintEl0 = document.getElementById('tuner-direction-hint');
+                    if (hintEl0) hintEl0.textContent = getTunerTarget() ? 'Tugtugin ang kwerdas\u2026' : '';
                     noteEl.className = 'tuner-gauge-note';
                     hzEl.textContent = '\u2014';
                     needleEl.style.transform = 'rotate(-40deg)';
@@ -1142,7 +1297,8 @@
                     tunerPendingCount = 0;
                     return;
                 }
-                var nearest = nearestTunerString(freq);
+                var lockedTarget = getTunerTarget();
+                var nearest = lockedTarget || nearestTunerString(freq);
                 var note = frequencyToNote(freq);
                 var rawCents = nearest ? Math.floor(1200 * Math.log(freq / nearest.freq) / Math.LN2) : note.cents;
                 // A single big jump from the last smoothed reading could be a real,
@@ -1169,6 +1325,7 @@
                 if (tunerSmoothedCents === null) tunerSmoothedCents = rawCents;
                 else tunerSmoothedCents += (rawCents - tunerSmoothedCents) * 0.15;
                 var cents = Math.round(tunerSmoothedCents);
+                var isLocked = !!lockedTarget;
                 var displayName = nearest ? nearest.name.replace(/[0-9]/, '') : note.name;
                 var IN_TUNE_WINDOW = 6; // +/- cents considered "in tune"
                 var rawStateClass = 'in-tune';
@@ -1196,6 +1353,13 @@
                 }
                 var stateClass = tunerDisplayState;
                 noteEl.textContent = displayName;
+                var hintEl = document.getElementById('tuner-direction-hint');
+                if (hintEl) {
+                    if (isLocked && stateClass === 'flat') hintEl.textContent = '\u2B06 Higpitan (itaas ang tono)';
+                    else if (isLocked && stateClass === 'sharp') hintEl.textContent = '\u2B07 Luwagan (ibaba ang tono)';
+                    else if (isLocked) hintEl.textContent = '\u2705 Tama na!';
+                    else hintEl.textContent = '';
+                }
                 noteEl.className = 'tuner-gauge-note ' + stateClass;
                 hzEl.textContent = freq.toFixed(1) + ' Hz';
                 var clamped = Math.max(-50, Math.min(50, cents));
@@ -1220,11 +1384,17 @@
                     tunerChimePlayed = false;
                 }
 
+                var selStr = document.getElementById('tuner-sel-string');
+                if (selStr) selStr.style.stroke = isLocked ? (stateClass === 'in-tune' ? '#3fd66b' : (stateClass === 'sharp' ? '#e5484d' : '#f2c94c')) : '';
+                document.querySelectorAll('.tuner-peg-btn').forEach(function (btn) {
+                    btn.classList.remove('ts-in-tune', 'ts-flat', 'ts-sharp');
+                    if (isLocked && btn.getAttribute('data-string') === lockedTarget.name) btn.classList.add('ts-' + stateClass);
+                });
                 document.querySelectorAll('.tuner-string-btn').forEach(function (btn) {
-                    if (nearest && btn.getAttribute('data-string') === nearest.name) {
+                    if (!isLocked && nearest && btn.getAttribute('data-string') === nearest.name) {
                         btn.classList.add('active-string');
                     } else {
-                        btn.classList.remove('active-string');
+                        if (!isLocked) btn.classList.remove('active-string');
                     }
                 });
             }
@@ -3039,6 +3209,7 @@
                     html += '<button data-inst="guitar" class="' + (state.tunerInstrument === 'guitar' ? 'on' : '') + '">Guitar</button>';
                     html += '<button data-inst="ukulele" class="' + (state.tunerInstrument === 'ukulele' ? 'on' : '') + '">Ukulele</button>';
                     html += '</div>';
+                    html += tunerHeadstockHtml();
                     html += '<div class="tuner-readout" id="tuner-readout-box">';
                     if (state.tunerListening) {
                         html += '<div class="tuner-gauge-wrap"><svg viewBox="0 0 220 130" class="tuner-gauge-svg" aria-hidden="true">';
@@ -3050,6 +3221,7 @@
                         html += '</svg><div class="tuner-gauge-note" id="tuner-note-display">\u2014</div></div>';
                         html += '<div class="tuner-gauge-labels"><span>\u25C0 MABABA</span><span>MATAAS \u25B6</span></div>';
                         html += '<div class="tuner-hz" id="tuner-hz-display">\u2014</div>';
+                        html += '<div class="tuner-dir" id="tuner-direction-hint"></div>';
                     } else if (state.tunerError) {
                         html += '<p class="tuner-idle">Bigyan ng permission ang mikropono para awtomatikong ma-detect ang tono.</p>';
                         html += '<button class="tuner-listen-btn" id="btn-tuner-retry">\uD83C\uDF99 Subukang Muli</button>';
@@ -3058,12 +3230,10 @@
                     }
                     html += '</div>';
                     if (state.tunerError) html += '<p style="color:var(--danger);font-size:12px;margin:-6px 0 12px;">' + escapeHtml(state.tunerError) + '</p>';
-                    html += '<p class="tuner-hint">O pindutin ang isang kwerdas para marinig ang reference tone:</p>';
-                    html += '<div class="tuner-strings">';
-                    tuningList.forEach(function (s) {
-                        html += '<button class="tuner-string-btn" data-string="' + s.name + '" data-freq="' + s.freq + '">' + s.name.replace(/[0-9]/, '') + '</button>';
-                    });
-                    html += '</div>';
+                    html += '<button class="tuner-auto-pill' + (state.tunerTarget ? '' : ' on') + '" id="btn-tuner-auto">\uD83C\uDFAF AUTO</button>';
+                    html += '<p class="tuner-hint">' + (state.tunerTarget
+                        ? 'Naka-lock sa <b style="color:var(--gold);">' + state.tunerTarget.replace(/[0-9]/, '') + '</b>. Pindutin ulit para i-unlock, o pindutin ang AUTO.'
+                        : 'Pindutin ang nota sa gilid para i-lock ang tuner sa kwerdas na yun (may tunog din). Walang napili = AUTO.') + '</p>';
                     html += '<button class="close-btn" id="btn-close-tuner">Isara</button>';
                     html += '</div></div>';
                 }
@@ -3112,8 +3282,11 @@
                     btn.onclick = function () { setTunerInstrument(btn.getAttribute('data-inst')); };
                 });
                 document.querySelectorAll('.tuner-string-btn').forEach(function (btn) {
-                    btn.onclick = function () { playReferenceTone(Number(btn.getAttribute('data-freq'))); };
+                    btn.onclick = function () { selectTunerString(btn.getAttribute('data-string'), Number(btn.getAttribute('data-freq'))); };
                 });
+                if (byId('btn-tuner-auto')) byId('btn-tuner-auto').onclick = function () {
+                    if (state.tunerTarget) { state.tunerTarget = null; resetTunerSmoothing(); render(); }
+                };
 
                 if (byId('btn-new')) byId('btn-new').onclick = createSong;
                 if (byId('btn-new-empty')) byId('btn-new-empty').onclick = createSong;
