@@ -330,13 +330,42 @@
   .tuner-dir{ font-size:13px; font-weight:700; color:var(--text); min-height:18px; margin-top:2px; letter-spacing:0.5px; }
   .tuner-string-btn.locked{ background:var(--gold); color:var(--on-accent); border-color:var(--gold); }
   .tuner-head-wrap{ position:relative; height:200px; margin:0 0 10px; }
-  .tuner-head-svg{ display:block; height:100%; width:auto; margin:0 auto; overflow:visible; }
-  .tuner-peg-btn{ position:absolute; width:42px; height:42px; border-radius:50%; padding:0; flex:none; font-size:16px; letter-spacing:0; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.07); border:1px solid var(--line); box-shadow:0 2px 6px rgba(0,0,0,0.4); }
-  .tuner-peg-btn.left{ left:0; }
-  .tuner-peg-btn.right{ right:0; }
+  .tuner-head-svg{ display:block; height:100%; width:100%; overflow:visible; }
+  .tuner-peg-btn{ position:absolute; width:58px; height:58px; border-radius:50%; padding:0; flex:none; font-size:26px; font-weight:800; letter-spacing:0; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.08); border:2px solid var(--line); box-shadow:0 2px 8px rgba(0,0,0,0.45); }
   .tuner-peg-btn.ts-in-tune{ background:#3fd66b; color:#04210f; border-color:#3fd66b; }
   .tuner-peg-btn.ts-flat{ background:#f2c94c; color:#2b2100; border-color:#f2c94c; }
   .tuner-peg-btn.ts-sharp{ background:#e5484d; color:#fff; border-color:#e5484d; }
+  /* ---- Fullscreen tuner ---- */
+  .confirm-overlay.tuner-full-overlay{ background:var(--bg); align-items:stretch; justify-content:stretch; z-index:85; }
+  .tuner-full{ width:100%; height:100%; box-sizing:border-box; display:flex; flex-direction:column; padding:env(safe-area-inset-top,0px) 12px env(safe-area-inset-bottom,0px);
+    background-image:linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px); background-size:26px 26px; }
+  .tf-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 2px 4px; }
+  .tf-close{ width:42px; height:42px; border-radius:50%; background:var(--surface-2); border:1px solid var(--line); color:var(--text); font-size:18px; flex:none; }
+  .tf-inst{ margin:0 !important; flex:1; max-width:230px; }
+  .tf-auto{ display:flex; align-items:center; gap:8px; font-size:12px; font-weight:700; letter-spacing:1px; color:var(--muted); flex:none; }
+  .tf-switch{ width:48px; height:28px; border-radius:14px; border:none; background:var(--line); position:relative; padding:0; transition:background .2s; }
+  .tf-switch i{ position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:#fff; transition:left .2s; }
+  .tf-switch.on{ background:var(--gold); }
+  .tf-switch.on i{ left:23px; }
+  .tf-meter{ position:relative; height:118px; margin:12px 4px 0; }
+  .tm-acc{ position:absolute; top:12px; font-size:36px; line-height:1; color:var(--muted); }
+  .tm-flat{ left:4px; }
+  .tm-sharp{ right:4px; }
+  .tm-ticks{ position:absolute; left:0; right:0; top:90px; height:26px; }
+  .tm-tick{ position:absolute; top:7px; width:2px; height:12px; margin-left:-1px; border-radius:1px; background:var(--muted); opacity:.65; }
+  .tm-tick.c{ top:0; height:26px; width:3px; margin-left:-1.5px; background:#3fd66b; opacity:1; }
+  .tm-needle{ --nc:var(--gold); position:absolute; top:0; left:50%; width:74px; height:74px; margin-left:-37px; box-sizing:border-box; border-radius:50%; border:5px solid var(--nc); background:rgba(0,0,0,0.4);
+    display:flex; align-items:center; justify-content:center; color:var(--nc); font-size:34px; font-weight:800; font-family:'Roboto Mono',monospace;
+    transition:left .28s ease-out, border-color .25s, color .25s, box-shadow .25s, opacity .25s; box-shadow:0 0 14px rgba(0,0,0,0.5); }
+  .tm-needle::after{ content:''; position:absolute; bottom:-15px; left:50%; margin-left:-9px; border-left:9px solid transparent; border-right:9px solid transparent; border-top:14px solid var(--nc); transition:border-color .25s; }
+  .tm-needle.idle{ --nc:var(--muted); opacity:0.6; }
+  .tm-needle.flat{ --nc:#f2c94c; }
+  .tm-needle.sharp{ --nc:#e5484d; }
+  .tm-needle.in-tune{ --nc:#3fd66b; box-shadow:0 0 26px rgba(63,214,107,0.6); }
+  .tf-info{ text-align:center; min-height:78px; padding:8px 8px 0; }
+  .tf-info .tuner-dir{ font-size:18px; min-height:24px; margin-top:2px; }
+  .tf-sub{ font-size:12px; color:var(--muted); line-height:1.5; margin-top:4px; }
+  .tf-stage-wrap{ flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:0 6px 14px; }
   .tuner-auto-pill{ width:100%; background:var(--surface-2); border:1px solid var(--line); color:var(--muted); border-radius:8px; padding:9px; font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px; }
   .tuner-auto-pill.on{ border-color:var(--gold); color:var(--gold); background:rgba(var(--gold-rgb),0.12); }
 
@@ -1133,15 +1162,34 @@
                 o.push('</svg>');
                 // tappable round note buttons beside each peg
                 function btn(it, side) {
+                    var pos = side === 'left'
+                        ? 'left:calc(' + ((L.knobL - 6) / 2).toFixed(1) + '% - 58px);'
+                        : 'right:calc(' + ((200 - L.knobR - 16 - 6) / 2).toFixed(1) + '% - 58px);';
                     return '<button class="tuner-string-btn tuner-peg-btn ' + side + (sel === it.n ? ' active-string locked' : '') +
-                        '" style="top:calc(' + (it.y / 230 * 100).toFixed(2) + '% - 21px);" data-string="' + it.n + '" data-freq="' + freqOf(it.n) + '">' +
+                        '" style="top:calc(' + (it.y / 230 * 100).toFixed(2) + '% - 29px);' + pos + '" data-string="' + it.n + '" data-freq="' + freqOf(it.n) + '">' +
                         it.n.replace(/[0-9]/, '') + '</button>';
                 }
                 var b = '';
                 L.left.forEach(function (it) { b += btn(it, 'left'); });
                 L.right.forEach(function (it) { b += btn(it, 'right'); });
-                return '<div class="tuner-head-wrap">' + o.join('') + b + '</div>';
+                return '<div class="tuner-head-wrap" id="tuner-stage">' + o.join('') + b + '</div>';
             }
+
+            // Size the headstock to fill the screen: as tall as the free space allows, but never so
+            // wide that the round note buttons (which sit just outside the pegs) run off the edges.
+            function fitTunerStage() {
+                var wrap = document.getElementById('tuner-stage-wrap');
+                var stage = document.getElementById('tuner-stage');
+                if (!wrap || !stage) return;
+                var availH = wrap.clientHeight - 14;
+                var maxW = (wrap.clientWidth - 12 - 116) / 0.7;
+                var h = Math.min(availH, maxW * 230 / 200);
+                if (!(h > 140)) h = 140;
+                stage.style.height = h + 'px';
+                stage.style.width = (h * 200 / 230) + 'px';
+            }
+            window.addEventListener('resize', fitTunerStage);
+            window.addEventListener('orientationchange', function () { setTimeout(fitTunerStage, 200); });
 
             function getTunerTarget() {
                 if (!state.tunerTarget) return null;
@@ -1175,6 +1223,8 @@
             }
 
             function openTuner() {
+                state.tunerTarget = null; // always starts in AUTO
+                resetTunerSmoothing();
                 state.tunerOpen = true;
                 state.tunerError = null;
                 render();
@@ -1271,23 +1321,21 @@
             function updateTunerReadout(freq) {
                 var noteEl = document.getElementById('tuner-note-display');
                 var hzEl = document.getElementById('tuner-hz-display');
-                var needleEl = document.getElementById('tuner-needle-line');
-                var pivotEl = document.getElementById('tuner-needle-pivot');
-                var readoutEl = document.getElementById('tuner-readout-box');
-                if (!noteEl || !hzEl || !needleEl) return;
+                var needleEl = document.getElementById('tuner-needle');
+                if (!noteEl || !needleEl) return;
                 if (freq === -1 || !isFinite(freq) || freq <= 0) {
-                    // Rest position: parked on the left in yellow, like a physical clip-on
-                    // tuner's needle hanging flat until a string is plucked \u2014 rather than
-                    // sitting center or (worse) appearing to start from the sharp/red side.
-                    noteEl.textContent = (getTunerTarget() ? getTunerTarget().name.replace(/[0-9]/, '') : '\u2014');
+                    // No signal: needle parks dim in the middle (not green, so it can't be
+                    // mistaken for "in tune") until a string is plucked.
+                    var tg0 = getTunerTarget();
+                    noteEl.textContent = tg0 ? tg0.name.replace(/[0-9]/, '') : '\u2014';
                     var hintEl0 = document.getElementById('tuner-direction-hint');
-                    if (hintEl0) hintEl0.textContent = getTunerTarget() ? 'Tugtugin ang kwerdas\u2026' : '';
-                    noteEl.className = 'tuner-gauge-note';
-                    hzEl.textContent = '\u2014';
-                    needleEl.style.transform = 'rotate(-40deg)';
-                    needleEl.setAttribute('class', 'tuner-needle-line flat');
-                    if (pivotEl) pivotEl.setAttribute('class', 'tuner-needle-line flat');
-                    if (readoutEl) readoutEl.className = 'tuner-readout';
+                    if (hintEl0) hintEl0.textContent = 'Tugtugin ang kwerdas\u2026';
+                    if (hzEl) hzEl.textContent = '\u2014';
+                    needleEl.style.left = '50%';
+                    needleEl.className = 'tm-needle idle';
+                    var selStr0 = document.getElementById('tuner-sel-string');
+                    if (selStr0) selStr0.style.stroke = '';
+                    document.querySelectorAll('.tuner-peg-btn').forEach(function (btn) { btn.classList.remove('ts-in-tune', 'ts-flat', 'ts-sharp'); });
                     tunerInTuneStreak = 0;
                     tunerChimePlayed = false;
                     tunerSmoothedCents = null;
@@ -1355,19 +1403,15 @@
                 noteEl.textContent = displayName;
                 var hintEl = document.getElementById('tuner-direction-hint');
                 if (hintEl) {
-                    if (isLocked && stateClass === 'flat') hintEl.textContent = '\u2B06 Higpitan (itaas ang tono)';
-                    else if (isLocked && stateClass === 'sharp') hintEl.textContent = '\u2B07 Luwagan (ibaba ang tono)';
-                    else if (isLocked) hintEl.textContent = '\u2705 Tama na!';
-                    else hintEl.textContent = '';
+                    if (stateClass === 'flat') hintEl.textContent = '\u2B06 Higpitan (itaas ang tono)';
+                    else if (stateClass === 'sharp') hintEl.textContent = '\u2B07 Luwagan (ibaba ang tono)';
+                    else hintEl.textContent = '\u2705 Tama na!';
                 }
-                noteEl.className = 'tuner-gauge-note ' + stateClass;
-                hzEl.textContent = freq.toFixed(1) + ' Hz';
+                if (hzEl) hzEl.textContent = freq.toFixed(1) + ' Hz';
+                // Needle only (no trailing line): slides left (flat) / right (sharp); dead center = in tune.
                 var clamped = Math.max(-50, Math.min(50, cents));
-                var angleDeg = clamped * 1.2; // maps \u00b150 cents to \u00b160\u00b0 sweep
-                needleEl.style.transform = 'rotate(' + angleDeg + 'deg)';
-                needleEl.setAttribute('class', 'tuner-needle-line ' + stateClass);
-                if (pivotEl) pivotEl.setAttribute('class', 'tuner-needle-line ' + stateClass);
-                if (readoutEl) readoutEl.className = 'tuner-readout ' + stateClass;
+                needleEl.style.left = (50 + clamped / 50 * 34) + '%';
+                needleEl.className = 'tm-needle ' + stateClass;
 
                 // Confirmation "ding" only once the reading holds truly steady in-tune
                 // for a solid stretch (not just a quick pass-through while tuning up from
@@ -3202,39 +3246,38 @@
 
                 if (state.tunerOpen) {
                     var tuningList = TUNINGS[state.tunerInstrument];
-                    html += '<div class="confirm-overlay" id="tuner-overlay"><div class="tuner-modal">';
-                    html += '<h3>\uD83C\uDFB8 Tuner</h3>';
-                    html += '<p class="tuner-hint" style="margin-top:-6px;">Kapag <b style="color:#6fce7f;">GITNA</b> ang needle at <b style="color:#6fce7f;">berde</b> \u2014 tama na ang tono!</p>';
-                    html += '<div class="tuner-inst-toggle">';
+                    html += '<div class="confirm-overlay tuner-full-overlay" id="tuner-overlay"><div class="tuner-full">';
+                    html += '<div class="tf-head">';
+                    html += '<button class="tf-close" id="btn-close-tuner" aria-label="Isara">\u2715</button>';
+                    html += '<div class="tuner-inst-toggle tf-inst">';
                     html += '<button data-inst="guitar" class="' + (state.tunerInstrument === 'guitar' ? 'on' : '') + '">Guitar</button>';
                     html += '<button data-inst="ukulele" class="' + (state.tunerInstrument === 'ukulele' ? 'on' : '') + '">Ukulele</button>';
                     html += '</div>';
-                    html += tunerHeadstockHtml();
-                    html += '<div class="tuner-readout" id="tuner-readout-box">';
+                    html += '<div class="tf-auto"><span>AUTO</span><button class="tf-switch' + (state.tunerTarget ? '' : ' on') + '" id="btn-tuner-auto" aria-label="Auto"><i></i></button></div>';
+                    html += '</div>';
+                    // Needle-only meter: \u266D on the left, \u266F on the right, centered = in tune
+                    html += '<div class="tf-meter">';
+                    html += '<span class="tm-acc tm-flat">\u266D</span><span class="tm-acc tm-sharp">\u266F</span>';
+                    html += '<div class="tm-ticks">';
+                    for (var ti = -5; ti <= 5; ti++) { html += '<span class="tm-tick' + (ti === 0 ? ' c' : '') + '" style="left:' + (50 + ti * 6.8) + '%"></span>'; }
+                    html += '</div>';
+                    html += '<div class="tm-needle idle" id="tuner-needle"><span id="tuner-note-display">\u2014</span></div>';
+                    html += '</div>';
+                    html += '<div class="tf-info">';
                     if (state.tunerListening) {
-                        html += '<div class="tuner-gauge-wrap"><svg viewBox="0 0 220 130" class="tuner-gauge-svg" aria-hidden="true">';
-                        html += '<path d="M32.06,65.00 A90,90 0 0,1 98.72,20.71" stroke="#f2c94c" stroke-width="14" fill="none" stroke-linecap="round"/>';
-                        html += '<path d="M98.72,20.71 A90,90 0 0,1 121.28,20.71" stroke="#3fd66b" stroke-width="14" fill="none" stroke-linecap="round"/>';
-                        html += '<path d="M121.28,20.71 A90,90 0 0,1 187.94,65.00" stroke="#e5484d" stroke-width="14" fill="none" stroke-linecap="round"/>';
-                        html += '<line x1="110" y1="110" x2="110" y2="26" class="tuner-needle-line" id="tuner-needle-line" stroke-width="4" stroke-linecap="round"/>';
-                        html += '<circle cx="110" cy="110" r="7" class="tuner-needle-line" id="tuner-needle-pivot"/>';
-                        html += '</svg><div class="tuner-gauge-note" id="tuner-note-display">\u2014</div></div>';
-                        html += '<div class="tuner-gauge-labels"><span>\u25C0 MABABA</span><span>MATAAS \u25B6</span></div>';
                         html += '<div class="tuner-hz" id="tuner-hz-display">\u2014</div>';
                         html += '<div class="tuner-dir" id="tuner-direction-hint"></div>';
                     } else if (state.tunerError) {
-                        html += '<p class="tuner-idle">Bigyan ng permission ang mikropono para awtomatikong ma-detect ang tono.</p>';
-                        html += '<button class="tuner-listen-btn" id="btn-tuner-retry">\uD83C\uDF99 Subukang Muli</button>';
+                        html += '<p class="tuner-idle">' + escapeHtml(state.tunerError) + '</p>';
+                        html += '<button class="tuner-listen-btn" id="btn-tuner-retry" style="max-width:240px;">\uD83C\uDF99 Subukang Muli</button>';
                     } else {
                         html += '<p class="tuner-idle">Kinukuha ang mikropono\u2026</p>';
                     }
+                    html += '<div class="tf-sub">' + (state.tunerTarget
+                        ? 'Naka-lock sa <b style="color:var(--gold);">' + state.tunerTarget.replace(/[0-9]/, '') + '</b>. Pindutin ulit ang nota (o ang AUTO) para i-unlock.'
+                        : 'AUTO: tugtugin ang kwerdas. O pindutin ang nota sa gilid para pumili ng kwerdas.') + '</div>';
                     html += '</div>';
-                    if (state.tunerError) html += '<p style="color:var(--danger);font-size:12px;margin:-6px 0 12px;">' + escapeHtml(state.tunerError) + '</p>';
-                    html += '<button class="tuner-auto-pill' + (state.tunerTarget ? '' : ' on') + '" id="btn-tuner-auto">\uD83C\uDFAF AUTO</button>';
-                    html += '<p class="tuner-hint">' + (state.tunerTarget
-                        ? 'Naka-lock sa <b style="color:var(--gold);">' + state.tunerTarget.replace(/[0-9]/, '') + '</b>. Pindutin ulit para i-unlock, o pindutin ang AUTO.'
-                        : 'Pindutin ang nota sa gilid para i-lock ang tuner sa kwerdas na yun (may tunog din). Walang napili = AUTO.') + '</p>';
-                    html += '<button class="close-btn" id="btn-close-tuner">Isara</button>';
+                    html += '<div class="tf-stage-wrap" id="tuner-stage-wrap">' + tunerHeadstockHtml() + '</div>';
                     html += '</div></div>';
                 }
 
@@ -3278,6 +3321,7 @@
                 if (byId('btn-close-tuner')) byId('btn-close-tuner').onclick = closeTuner;
                 if (byId('tuner-overlay')) byId('tuner-overlay').onclick = function (e) { if (e.target.id === 'tuner-overlay') closeTuner(); };
                 if (byId('btn-tuner-retry')) byId('btn-tuner-retry').onclick = function () { startTunerListening(); };
+                fitTunerStage();
                 document.querySelectorAll('.tuner-inst-toggle button').forEach(function (btn) {
                     btn.onclick = function () { setTunerInstrument(btn.getAttribute('data-inst')); };
                 });
