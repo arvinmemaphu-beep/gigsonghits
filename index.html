@@ -365,6 +365,11 @@
   .tm-needle.flat{ --nc:#f2c94c; }
   .tm-needle.sharp{ --nc:#e5484d; }
   .tm-needle.in-tune{ --nc:#3fd66b; background:#3fd66b; color:#04210f; box-shadow:0 0 26px rgba(63,214,107,0.6); }
+  .tm-needle{ width:78px !important; height:92px !important; margin-left:-39px !important; border:none !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; color:#140f08 !important; align-items:flex-start !important; padding-top:12px; filter:drop-shadow(0 4px 8px rgba(0,0,0,.55)); }
+  .tm-needle::before{ content:''; position:absolute; inset:0; background:var(--nc); clip-path:polygon(8% 0,92% 0,100% 8%,100% 58%,50% 100%,0 58%,0 8%); }
+  .tm-needle > span{ position:relative; z-index:1; }
+  .tm-needle.in-tune{ filter:drop-shadow(0 0 14px rgba(63,214,107,.8)); }
+  .tm-needle::after{ top:96% !important; width:6px !important; margin-left:-3px !important; }
   .tm-acc, .tf-info .tuner-idle{ display:none !important; }
   .tf-info{ text-align:center; min-height:78px; padding:8px 8px 0; }
   .tf-info .tuner-dir{ font-size:18px; min-height:24px; margin-top:2px; }
@@ -1084,6 +1089,7 @@
                     betterTau = denom !== 0 ? tauEstimate + (s2 - s0) / denom : tauEstimate;
                 }
                 if (betterTau <= 0) return -1;
+                if (yinBuf[tauEstimate] > 0.35) return -1; // too unclear, skip
                 return sampleRate / betterTau;
             }
 
@@ -1279,7 +1285,7 @@
                     var AC = window.AudioContext || window.webkitAudioContext;
                     tunerAudioCtx = new AC();
                     tunerAnalyser = tunerAudioCtx.createAnalyser();
-                    tunerAnalyser.fftSize = 4096;
+                    tunerAnalyser.fftSize = 8192;
                     tunerDataBuffer = new Float32Array(tunerAnalyser.fftSize);
                     tunerSourceNode = tunerAudioCtx.createMediaStreamSource(tunerStream);
                     tunerSourceNode.connect(tunerAnalyser);
@@ -1320,7 +1326,7 @@
                 // reading — holding at the rest position until then avoids the needle
                 // throwing hard right for an instant on the very first sample or two.
                 tunerFreqHistory.push(freq);
-                if (tunerFreqHistory.length > 5) tunerFreqHistory.shift();
+                if (tunerFreqHistory.length > 7) tunerFreqHistory.shift();
                 if (tunerFreqHistory.length < 5) {
                     updateTunerReadout(-1);
                     return;
@@ -1361,7 +1367,7 @@
                 var lockedTarget = getTunerTarget();
                 var nearest = lockedTarget || nearestTunerString(freq);
                 var note = frequencyToNote(freq);
-                var rawCents = nearest ? Math.round(1200 * Math.log(freq / nearest.freq) / Math.LN2) : note.cents;
+                var rawCents = nearest ? 1200 * Math.log(freq / nearest.freq) / Math.LN2 : note.cents;
                 // A single big jump from the last smoothed reading could be a real,
                 // fast pitch change (turning a tuning peg on a very out-of-tune string)
                 // or a one-off octave/harmonic misread \u2014 those look identical on their
@@ -1389,10 +1395,10 @@
                 // gradually toward the pitch instead of jumping around with every noisy
                 // sample \u2014 makes it clear and easy to follow whether you're flat or sharp.
                 tunerSmoothedCents += (rawCents - tunerSmoothedCents) * (tunerOnsetFrames <= 6 ? 0.35 : 0.2);
-                var cents = Math.round(tunerSmoothedCents);
+                var cents = tunerSmoothedCents;
                 var isLocked = !!lockedTarget;
                 var displayName = nearest ? nearest.name.replace(/[0-9]/, '') : note.name;
-                var IN_TUNE_WINDOW = 6; // +/- cents considered "in tune"
+                var IN_TUNE_WINDOW = (tunerDisplayState === 'in-tune') ? 7 : 4; // +/- cents considered "in tune"
                 var rawStateClass = 'in-tune';
                 if (cents > IN_TUNE_WINDOW) rawStateClass = 'sharp';
                 else if (cents < -IN_TUNE_WINDOW) rawStateClass = 'flat';
