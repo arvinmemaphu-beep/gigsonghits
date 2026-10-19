@@ -357,11 +357,14 @@
   .tm-needle{ --nc:var(--gold); position:absolute; top:0; left:50%; width:74px; height:74px; margin-left:-37px; box-sizing:border-box; border-radius:50%; border:5px solid var(--nc); background:rgba(0,0,0,0.4);
     display:flex; align-items:center; justify-content:center; color:var(--nc); font-size:34px; font-weight:800; font-family:'Roboto Mono',monospace;
     transition:left .28s ease-out, border-color .25s, color .25s, box-shadow .25s, opacity .25s; box-shadow:0 0 14px rgba(0,0,0,0.5); }
-  .tm-needle::after{ content:''; position:absolute; bottom:-15px; left:50%; margin-left:-9px; border-left:9px solid transparent; border-right:9px solid transparent; border-top:14px solid var(--nc); transition:border-color .25s; }
+  .tm-needle::after{ content:''; position:absolute; top:100%; left:50%; width:4px; margin-left:-2px; height:var(--nl,300px); border-radius:2px; background:var(--nc); opacity:.9; pointer-events:none; transition:background .25s; box-shadow:0 0 8px rgba(0,0,0,0.4); }
+  .tm-needle{ z-index:5; pointer-events:none; }
+  .tf-info{ min-height:0 !important; }
   .tm-needle.idle{ --nc:var(--muted); opacity:0.6; }
   .tm-needle.flat{ --nc:#f2c94c; }
   .tm-needle.sharp{ --nc:#e5484d; }
-  .tm-needle.in-tune{ --nc:#3fd66b; box-shadow:0 0 26px rgba(63,214,107,0.6); }
+  .tm-needle.in-tune{ --nc:#3fd66b; background:#3fd66b; color:#04210f; box-shadow:0 0 26px rgba(63,214,107,0.6); }
+  .tm-acc, .tf-info .tuner-idle{ display:none !important; }
   .tf-info{ text-align:center; min-height:78px; padding:8px 8px 0; }
   .tf-info .tuner-dir{ font-size:18px; min-height:24px; margin-top:2px; }
   .tf-sub{ font-size:12px; color:var(--muted); line-height:1.5; margin-top:4px; }
@@ -944,6 +947,13 @@
             var scrollAnimId = null;
             var countdownTimerId = null;
 
+            function tunerSizeNeedle(n) {
+                var st = document.querySelector('#tuner-stage-wrap .tuner-head-svg') || document.getElementById('tuner-stage-wrap');
+                if (!st) return;
+                var r = st.getBoundingClientRect(), nr = n.getBoundingClientRect();
+                var len = Math.max(40, (r.top + r.height / 2) - nr.bottom);
+                n.style.setProperty('--nl', len + 'px');
+            }
             // ---- Tuner (guitar / ukulele) ----
             var TUNINGS = {
                 guitar: [
@@ -979,6 +989,7 @@
             var tunerPendingState = null;
             var tunerPendingCount = 0;
             var tunerFreqHistory = [];
+            var tunerOnsetFrames = 0;
 
             function frequencyToNote(frequency) {
                 var noteNum = 12 * (Math.log(frequency / 440) / Math.LN2);
@@ -1332,13 +1343,14 @@
                     if (hintEl0) hintEl0.textContent = 'Tugtugin ang kwerdas\u2026';
                     if (hzEl) hzEl.textContent = '\u2014';
                     needleEl.style.left = '50%';
-                    needleEl.className = 'tm-needle idle';
+                    needleEl.className = 'tm-needle idle'; tunerSizeNeedle(needleEl);
                     var selStr0 = document.getElementById('tuner-sel-string');
                     if (selStr0) selStr0.style.stroke = '';
                     document.querySelectorAll('.tuner-peg-btn').forEach(function (btn) { btn.classList.remove('ts-in-tune', 'ts-flat', 'ts-sharp'); });
                     tunerInTuneStreak = 0;
                     tunerChimePlayed = false;
                     tunerSmoothedCents = null;
+                    tunerOnsetFrames = 0;
                     tunerPendingOutlierCents = null;
                     tunerDisplayState = 'flat';
                     tunerPendingState = null;
@@ -1356,7 +1368,12 @@
                 // poll: if the NEXT reading confirms roughly the same jump, it's real
                 // movement and we snap to it immediately (so tuning a way-off string
                 // still tracks quickly); if it doesn't, it was a glitch and we drop it.
-                if (tunerSmoothedCents !== null && Math.abs(rawCents - tunerSmoothedCents) > 35) {
+                // Fresh pluck: the attack reads sharp for a moment. Ignore that sharp
+                // transient for the first frames so the needle always comes in from the left.
+                tunerOnsetFrames++;
+                if (tunerOnsetFrames <= 12 && rawCents > 0) rawCents = Math.min(rawCents, 0);
+                if (tunerSmoothedCents === null) { tunerSmoothedCents = -50; }
+                else if (tunerSmoothedCents !== null && Math.abs(rawCents - tunerSmoothedCents) > 35 && tunerOnsetFrames > 12) {
                     if (tunerPendingOutlierCents !== null && Math.abs(rawCents - tunerPendingOutlierCents) < 15) {
                         tunerSmoothedCents = rawCents; // confirmed \u2014 accept the jump right away
                         tunerPendingOutlierCents = null;
@@ -1370,8 +1387,7 @@
                 // Smooth the reading (exponential moving average) so the needle glides
                 // gradually toward the pitch instead of jumping around with every noisy
                 // sample \u2014 makes it clear and easy to follow whether you're flat or sharp.
-                if (tunerSmoothedCents === null) tunerSmoothedCents = rawCents;
-                else tunerSmoothedCents += (rawCents - tunerSmoothedCents) * 0.15;
+                tunerSmoothedCents += (rawCents - tunerSmoothedCents) * (tunerOnsetFrames <= 12 ? 0.3 : 0.15);
                 var cents = Math.round(tunerSmoothedCents);
                 var isLocked = !!lockedTarget;
                 var displayName = nearest ? nearest.name.replace(/[0-9]/, '') : note.name;
@@ -1409,9 +1425,9 @@
                 }
                 if (hzEl) hzEl.textContent = freq.toFixed(1) + ' Hz';
                 // Needle only (no trailing line): slides left (flat) / right (sharp); dead center = in tune.
-                var clamped = Math.max(-50, Math.min(50, cents));
+                var clamped = stateClass === 'in-tune' ? 0 : Math.max(-50, Math.min(50, cents));
                 needleEl.style.left = (50 + clamped / 50 * 34) + '%';
-                needleEl.className = 'tm-needle ' + stateClass;
+                needleEl.className = 'tm-needle ' + stateClass; tunerSizeNeedle(needleEl);
 
                 // Confirmation "ding" only once the reading holds truly steady in-tune
                 // for a solid stretch (not just a quick pass-through while tuning up from
@@ -3264,18 +3280,10 @@
                     html += '<div class="tm-needle idle" id="tuner-needle"><span id="tuner-note-display">\u2014</span></div>';
                     html += '</div>';
                     html += '<div class="tf-info">';
-                    if (state.tunerListening) {
-                        html += '<div class="tuner-hz" id="tuner-hz-display">\u2014</div>';
-                        html += '<div class="tuner-dir" id="tuner-direction-hint"></div>';
-                    } else if (state.tunerError) {
+                    if (state.tunerError) {
                         html += '<p class="tuner-idle">' + escapeHtml(state.tunerError) + '</p>';
                         html += '<button class="tuner-listen-btn" id="btn-tuner-retry" style="max-width:240px;">\uD83C\uDF99 Subukang Muli</button>';
-                    } else {
-                        html += '<p class="tuner-idle">Kinukuha ang mikropono\u2026</p>';
                     }
-                    html += '<div class="tf-sub">' + (state.tunerTarget
-                        ? 'Naka-lock sa <b style="color:var(--gold);">' + state.tunerTarget.replace(/[0-9]/, '') + '</b>. Pindutin ulit ang nota (o ang AUTO) para i-unlock.'
-                        : 'AUTO: tugtugin ang kwerdas. O pindutin ang nota sa gilid para pumili ng kwerdas.') + '</div>';
                     html += '</div>';
                     html += '<div class="tf-stage-wrap" id="tuner-stage-wrap">' + tunerHeadstockHtml() + '</div>';
                     html += '</div></div>';
