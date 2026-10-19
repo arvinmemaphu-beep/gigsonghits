@@ -357,8 +357,9 @@
   .tm-needle{ --nc:var(--gold); position:absolute; top:0; left:50%; width:74px; height:74px; margin-left:-37px; box-sizing:border-box; border-radius:50%; border:5px solid var(--nc); background:rgba(0,0,0,0.4);
     display:flex; align-items:center; justify-content:center; color:var(--nc); font-size:34px; font-weight:800; font-family:'Roboto Mono',monospace;
     transition:left .28s ease-out, border-color .25s, color .25s, box-shadow .25s, opacity .25s; box-shadow:0 0 14px rgba(0,0,0,0.5); }
-  .tm-needle::after{ content:''; position:absolute; top:100%; left:50%; width:4px; margin-left:-2px; height:var(--nl,300px); border-radius:2px; background:var(--nc); opacity:.9; pointer-events:none; transition:background .25s; box-shadow:0 0 8px rgba(0,0,0,0.4); }
+  .tm-needle::after{ content:''; position:absolute; top:100%; left:50%; width:4px; margin-left:-2px; height:var(--nl,300px); border-radius:2px; background:var(--nc); opacity:0; pointer-events:none; transition:background .25s, opacity .25s; box-shadow:0 0 8px rgba(0,0,0,0.4); }
   .tm-needle{ z-index:5; pointer-events:none; }
+  .tm-needle.in-tune::after{ opacity:.95; }
   .tf-info{ min-height:0 !important; }
   .tm-needle.idle{ --nc:var(--muted); opacity:0.6; }
   .tm-needle.flat{ --nc:#f2c94c; }
@@ -997,7 +998,7 @@
                 var name = NOTE_NAMES[((rounded % 12) + 12) % 12];
                 var octave = Math.floor(rounded / 12);
                 var exactFreq = 440 * Math.pow(2, (rounded - 57) / 12);
-                var cents = Math.floor(1200 * Math.log(frequency / exactFreq) / Math.LN2);
+                var cents = Math.round(1200 * Math.log(frequency / exactFreq) / Math.LN2);
                 return { name: name, octave: octave, cents: cents };
             }
 
@@ -1360,7 +1361,7 @@
                 var lockedTarget = getTunerTarget();
                 var nearest = lockedTarget || nearestTunerString(freq);
                 var note = frequencyToNote(freq);
-                var rawCents = nearest ? Math.floor(1200 * Math.log(freq / nearest.freq) / Math.LN2) : note.cents;
+                var rawCents = nearest ? Math.round(1200 * Math.log(freq / nearest.freq) / Math.LN2) : note.cents;
                 // A single big jump from the last smoothed reading could be a real,
                 // fast pitch change (turning a tuning peg on a very out-of-tune string)
                 // or a one-off octave/harmonic misread \u2014 those look identical on their
@@ -1371,9 +1372,9 @@
                 // Fresh pluck: the attack reads sharp for a moment. Ignore that sharp
                 // transient for the first frames so the needle always comes in from the left.
                 tunerOnsetFrames++;
-                if (tunerOnsetFrames <= 12 && rawCents > 0) rawCents = Math.min(rawCents, 0);
+                if (tunerOnsetFrames <= 6 && rawCents > 0) rawCents = Math.min(rawCents, 0);
                 if (tunerSmoothedCents === null) { tunerSmoothedCents = -50; }
-                else if (tunerSmoothedCents !== null && Math.abs(rawCents - tunerSmoothedCents) > 35 && tunerOnsetFrames > 12) {
+                else if (tunerSmoothedCents !== null && Math.abs(rawCents - tunerSmoothedCents) > 35 && tunerOnsetFrames > 6) {
                     if (tunerPendingOutlierCents !== null && Math.abs(rawCents - tunerPendingOutlierCents) < 15) {
                         tunerSmoothedCents = rawCents; // confirmed \u2014 accept the jump right away
                         tunerPendingOutlierCents = null;
@@ -1387,7 +1388,7 @@
                 // Smooth the reading (exponential moving average) so the needle glides
                 // gradually toward the pitch instead of jumping around with every noisy
                 // sample \u2014 makes it clear and easy to follow whether you're flat or sharp.
-                tunerSmoothedCents += (rawCents - tunerSmoothedCents) * (tunerOnsetFrames <= 12 ? 0.3 : 0.15);
+                tunerSmoothedCents += (rawCents - tunerSmoothedCents) * (tunerOnsetFrames <= 6 ? 0.35 : 0.2);
                 var cents = Math.round(tunerSmoothedCents);
                 var isLocked = !!lockedTarget;
                 var displayName = nearest ? nearest.name.replace(/[0-9]/, '') : note.name;
@@ -1402,7 +1403,7 @@
                 // specifically needs more confirmation than entering it, so a locked-in
                 // perfect tune doesn't get knocked out by a brief blip \u2014 only a real,
                 // sustained drift (actually turning out of tune) will move it.
-                var pollsNeededToSwitch = (tunerDisplayState === 'in-tune') ? 4 : 2;
+                var pollsNeededToSwitch = (tunerDisplayState === 'in-tune') ? 3 : 2;
                 if (rawStateClass === tunerDisplayState) {
                     tunerPendingState = null;
                     tunerPendingCount = 0;
