@@ -996,6 +996,7 @@
             var tunerPendingCount = 0;
             var tunerFreqHistory = [];
             var tunerOnsetFrames = 0;
+            var tunerMissFrames = 0;
 
             function frequencyToNote(frequency) {
                 var noteNum = 12 * (Math.log(frequency / 440) / Math.LN2);
@@ -1032,7 +1033,7 @@
                 var rms = 0;
                 for (var i = 0; i < size; i++) { rms += buffer[i] * buffer[i]; }
                 rms = Math.sqrt(rms / size);
-                if (rms < 0.01) return -1; // too quiet / silence
+                if (rms < 0.0025) return -1; // too quiet / silence
 
                 buffer = lowPassBuffer(buffer, sampleRate, 1000);
                 var halfSize = Math.floor(size / 2);
@@ -1230,12 +1231,8 @@
             // Tap a string = lock onto it (and hear its reference tone).
             // Tap the same string again, or press AUTO, = back to automatic detection.
             function selectTunerString(name, freq) {
-                if (state.tunerTarget === name) {
-                    state.tunerTarget = null;
-                } else {
-                    state.tunerTarget = name;
-                    playReferenceTone(freq);
-                }
+                state.tunerTarget = name;
+                playReferenceTone(freq);
                 resetTunerSmoothing();
                 render();
             }
@@ -1311,10 +1308,11 @@
                     ? detectPitch(tunerDataBuffer, tunerAudioCtx.sampleRate, tgt.freq * 0.72, tgt.freq * 1.4)
                     : detectPitch(tunerDataBuffer, tunerAudioCtx.sampleRate);
                 if (freq === -1) {
-                    tunerFreqHistory = [];
-                    updateTunerReadout(-1);
+                    tunerMissFrames = (typeof tunerMissFrames === 'number' ? tunerMissFrames : 0) + 1;
+                    if (tunerMissFrames >= 6) { tunerFreqHistory = []; updateTunerReadout(-1); }
                     return;
                 }
+                tunerMissFrames = 0;
                 // Median-of-5 filter across recent samples: throws out stray readings
                 // (e.g. a momentary octave slip, or a plucked-string attack transient
                 // that briefly reads sharp) before they ever reach the smoothing/needle
@@ -1326,8 +1324,8 @@
                 // reading — holding at the rest position until then avoids the needle
                 // throwing hard right for an instant on the very first sample or two.
                 tunerFreqHistory.push(freq);
-                if (tunerFreqHistory.length > 7) tunerFreqHistory.shift();
-                if (tunerFreqHistory.length < 5) {
+                if (tunerFreqHistory.length > 5) tunerFreqHistory.shift();
+                if (tunerFreqHistory.length < 3) {
                     updateTunerReadout(-1);
                     return;
                 }
@@ -1378,7 +1376,7 @@
                 // Fresh pluck: the attack reads sharp for a moment. Ignore that sharp
                 // transient for the first frames so the needle always comes in from the left.
                 tunerOnsetFrames++;
-                if (tunerOnsetFrames <= 3) return; // skip pluck attack instead of faking a flat reading
+                if (tunerOnsetFrames <= 1) { needleEl.style.left = '18%'; return; } // skip pluck attack instead of faking a flat reading
                 if (tunerSmoothedCents === null) { tunerSmoothedCents = rawCents; }
                 else if (tunerSmoothedCents !== null && Math.abs(rawCents - tunerSmoothedCents) > 35) {
                     if (tunerPendingOutlierCents !== null && Math.abs(rawCents - tunerPendingOutlierCents) < 15) {
@@ -1433,7 +1431,11 @@
                 if (hzEl) hzEl.textContent = freq.toFixed(1) + ' Hz';
                 // Needle only (no trailing line): slides left (flat) / right (sharp); dead center = in tune.
                 var clamped = Math.max(-50, Math.min(50, cents)); // show true offset even when green
-                needleEl.style.left = (50 + clamped / 50 * 34) + '%';
+                var offs;
+                if (stateClass === 'in-tune') offs = 0;
+                else if (stateClass === 'flat') offs = -Math.max(6, Math.abs(clamped) / 50 * 34);
+                else offs = Math.max(6, Math.abs(clamped) / 50 * 34);
+                needleEl.style.left = (50 + offs) + '%';
                 needleEl.className = 'tm-needle ' + stateClass; tunerSizeNeedle(needleEl);
 
                 // Confirmation "ding" only once the reading holds truly steady in-tune
@@ -1471,20 +1473,29 @@
                 try {
                     var AC = window.AudioContext || window.webkitAudioContext;
                     if (!tunerAudioCtx || tunerAudioCtx.state === 'closed') tunerAudioCtx = new AC();
-                    var osc = tunerAudioCtx.createOscillator();
-                    var gain = tunerAudioCtx.createGain();
-                    osc.type = 'sine';
-                    osc.frequency.value = freq;
-                    gain.gain.value = 0.0001;
-                    osc.connect(gain);
-                    gain.connect(tunerAudioCtx.destination);
-                    var now = tunerAudioCtx.currentTime;
-                    gain.gain.exponentialRampToValueAtTime(0.15, now + 0.05);
-                    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.4);
-                    osc.start(now);
-                    osc.stop(now + 1.5);
-                    tunerRefOsc = osc;
-                    tunerRefOscTimeout = setTimeout(function () { tunerRefOsc = null; }, 1550);
+                    if (tunerAudioCtx.state === 'suspended') tunerAudioCtx.resume();
+                    // Guitar-like pluck built from harmonics, so even low strings (E, A, D)
+                    // are clearly heard as the right note on small phone speakers.
+                    var now = tunerAudioCtx.currentTime + 0.02;
+                    var master = tunerAudioCtx.createGain();
+                    master.gain.setValueAtTime(0.0001, now);
+                    master.gain.exponentialRampToValueAtTime(0.35, now + 0.01);
+                    master.gain.exponentialRampToValueAtTime(0.0001, now + 2.2);
+                    master.connect(tunerAudioCtx.destination);
+                    var amps = [1, 0.6, 0.4, 0.25, 0.15, 0.1];
+                    var first = null;
+                    for (var h = 0; h < amps.length; h++) {
+                        var osc = tunerAudioCtx.createOscillator();
+                        var g = tunerAudioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.value = freq * (h + 1);
+                        g.gain.value = amps[h] / 2.5;
+                        osc.connect(g); g.connect(master);
+                        osc.start(now); osc.stop(now + 2.3);
+                        if (!first) first = osc;
+                    }
+                    tunerRefOsc = first;
+                    tunerRefOscTimeout = setTimeout(function () { tunerRefOsc = null; }, 2350);
                 } catch (e) { }
             }
 
