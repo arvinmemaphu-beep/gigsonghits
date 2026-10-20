@@ -1378,9 +1378,9 @@
                 // Fresh pluck: the attack reads sharp for a moment. Ignore that sharp
                 // transient for the first frames so the needle always comes in from the left.
                 tunerOnsetFrames++;
-                if (tunerOnsetFrames <= 6 && rawCents > 0) rawCents = Math.min(rawCents, 0);
-                if (tunerSmoothedCents === null) { tunerSmoothedCents = -50; }
-                else if (tunerSmoothedCents !== null && Math.abs(rawCents - tunerSmoothedCents) > 35 && tunerOnsetFrames > 6) {
+                if (tunerOnsetFrames <= 3) return; // skip pluck attack instead of faking a flat reading
+                if (tunerSmoothedCents === null) { tunerSmoothedCents = rawCents; }
+                else if (tunerSmoothedCents !== null && Math.abs(rawCents - tunerSmoothedCents) > 35) {
                     if (tunerPendingOutlierCents !== null && Math.abs(rawCents - tunerPendingOutlierCents) < 15) {
                         tunerSmoothedCents = rawCents; // confirmed \u2014 accept the jump right away
                         tunerPendingOutlierCents = null;
@@ -1394,11 +1394,11 @@
                 // Smooth the reading (exponential moving average) so the needle glides
                 // gradually toward the pitch instead of jumping around with every noisy
                 // sample \u2014 makes it clear and easy to follow whether you're flat or sharp.
-                tunerSmoothedCents += (rawCents - tunerSmoothedCents) * (tunerOnsetFrames <= 6 ? 0.35 : 0.2);
+                tunerSmoothedCents += (rawCents - tunerSmoothedCents) * (tunerOnsetFrames <= 8 ? 0.5 : 0.3);
                 var cents = tunerSmoothedCents;
                 var isLocked = !!lockedTarget;
                 var displayName = nearest ? nearest.name.replace(/[0-9]/, '') : note.name;
-                var IN_TUNE_WINDOW = (tunerDisplayState === 'in-tune') ? 7 : 4; // +/- cents considered "in tune"
+                var IN_TUNE_WINDOW = (tunerDisplayState === 'in-tune') ? 3 : 2; // +/- cents considered "in tune"
                 var rawStateClass = 'in-tune';
                 if (cents > IN_TUNE_WINDOW) rawStateClass = 'sharp';
                 else if (cents < -IN_TUNE_WINDOW) rawStateClass = 'flat';
@@ -1432,7 +1432,7 @@
                 }
                 if (hzEl) hzEl.textContent = freq.toFixed(1) + ' Hz';
                 // Needle only (no trailing line): slides left (flat) / right (sharp); dead center = in tune.
-                var clamped = stateClass === 'in-tune' ? 0 : Math.max(-50, Math.min(50, cents));
+                var clamped = Math.max(-50, Math.min(50, cents)); // show true offset even when green
                 needleEl.style.left = (50 + clamped / 50 * 34) + '%';
                 needleEl.className = 'tm-needle ' + stateClass; tunerSizeNeedle(needleEl);
 
