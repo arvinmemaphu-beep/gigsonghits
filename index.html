@@ -1012,6 +1012,15 @@
             var tunerMissFrames = 0;
             var tunerMuteUntil = 0;
             var tunerMicRetried = false;
+            var tunerHoldUntil = 0;       // while the in-tune chime plays, ignore the mic but KEEP the display as-is
+            var tunerAutoName = null;     // AUTO mode: string currently being tuned (sticky so it doesn't flip-flop)
+            var tunerAutoCand = null;
+            var tunerAutoCandCount = 0;
+            // ---- Tuner tuning knobs ----
+            var TUNER_POLL_MS = 60;        // how often the mic is analysed
+            var TUNER_ENTER_CENTS = 5;     // +/- cents to count as IN TUNE (was 2: too strict for a phone mic; 5 is the usual clip-on tuner standard)
+            var TUNER_STAY_CENTS = 9;      // once green, stay green until drift passes this (hysteresis)
+            var TUNER_MISS_FRAMES = 10;    // frames of silence before the display resets (was 6)
 
             function frequencyToNote(frequency) {
                 var noteNum = 12 * (Math.log(frequency / 440) / Math.LN2);
@@ -1254,6 +1263,7 @@
                 tunerPendingCount = 0;
                 tunerInTuneStreak = 0;
                 tunerChimePlayed = false;
+                tunerAutoName = null; tunerAutoCand = null; tunerAutoCandCount = 0;
             }
 
             // Tap a string = lock onto it (and hear its reference tone).
@@ -1319,7 +1329,7 @@
                     render();
                     // Polled at ~12fps (not requestAnimationFrame) since the autocorrelation
                     // pass is CPU-heavy; a tuner reading doesn't need to update every frame.
-                    tunerRafId = setInterval(tunerLoop, 80);
+                    tunerRafId = setInterval(tunerLoop, TUNER_POLL_MS);
                 } catch (err) {
                     state.tunerListening = false;
                     if (!tunerMicRetried && state.tunerOpen) {
@@ -1339,6 +1349,8 @@
                 // The mic must not "hear" the app's own reference tone / chime, otherwise
                 // tapping a string makes the tuner read its own speaker as a perfect in-tune note.
                 if (performance.now() < tunerMuteUntil) { tunerFreqHistory = []; updateTunerReadout(-1); return; }
+                // In-tune chime is playing: skip the mic but leave the green display untouched.
+                if (performance.now() < tunerHoldUntil) return;
                 tunerAnalyser.getFloatTimeDomainData(tunerDataBuffer);
                 var tgt = getTunerTarget();
                 // Locked: search only from ~a fourth below to ~a fourth above the chosen string
@@ -1356,7 +1368,7 @@
                 }
                 if (freq === -1) {
                     tunerMissFrames = (typeof tunerMissFrames === 'number' ? tunerMissFrames : 0) + 1;
-                    if (tunerMissFrames >= 6) { tunerFreqHistory = []; updateTunerReadout(-1); }
+                    if (tunerMissFrames >= TUNER_MISS_FRAMES) { tunerFreqHistory = []; updateTunerReadout(-1); }
                     return;
                 }
                 tunerMissFrames = 0;
@@ -1409,10 +1421,29 @@
                     tunerDisplayState = 'flat';
                     tunerPendingState = null;
                     tunerPendingCount = 0;
+                    tunerAutoName = null; tunerAutoCand = null; tunerAutoCandCount = 0;
                     return;
                 }
                 var lockedTarget = getTunerTarget();
                 var nearest = lockedTarget || nearestTunerString(freq);
+                // AUTO mode: stick to one string until a different one is heard 3 polls in a row.
+                // Before, a slightly-off string near the boundary flipped between two neighbours
+                // every poll, so the +/- cents jumped by ~100 and the needle never settled.
+                if (!lockedTarget && nearest) {
+                    if (!tunerAutoName) { tunerAutoName = nearest.name; }
+                    else if (nearest.name !== tunerAutoName) {
+                        if (tunerAutoCand === nearest.name) tunerAutoCandCount++;
+                        else { tunerAutoCand = nearest.name; tunerAutoCandCount = 1; }
+                        if (tunerAutoCandCount >= 3) {
+                            tunerAutoName = nearest.name; tunerAutoCand = null; tunerAutoCandCount = 0;
+                            tunerSmoothedCents = null; tunerPendingOutlierCents = null;
+                            tunerDisplayState = 'flat'; tunerPendingState = null; tunerPendingCount = 0;
+                            tunerInTuneStreak = 0; tunerChimePlayed = false; tunerOnsetFrames = 1;
+                        } else { return; } // hold the display until the new string is confirmed
+                    } else { tunerAutoCand = null; tunerAutoCandCount = 0; }
+                    var list0 = TUNINGS[state.tunerInstrument];
+                    for (var li = 0; li < list0.length; li++) { if (list0[li].name === tunerAutoName) { nearest = list0[li]; break; } }
+                }
                 var note = frequencyToNote(freq);
                 var rawCents = nearest ? 1200 * Math.log(freq / nearest.freq) / Math.LN2 : note.cents;
                 // A single big jump from the last smoothed reading could be a real,
@@ -1441,11 +1472,13 @@
                 // Smooth the reading (exponential moving average) so the needle glides
                 // gradually toward the pitch instead of jumping around with every noisy
                 // sample \u2014 makes it clear and easy to follow whether you're flat or sharp.
-                tunerSmoothedCents += (rawCents - tunerSmoothedCents) * (tunerOnsetFrames <= 8 ? 0.5 : 0.3);
+                var dErr = Math.abs(rawCents - tunerSmoothedCents);
+                var alpha = tunerOnsetFrames <= 6 ? 0.55 : (dErr > 20 ? 0.6 : (dErr > 8 ? 0.4 : 0.22));
+                tunerSmoothedCents += (rawCents - tunerSmoothedCents) * alpha;
                 var cents = tunerSmoothedCents;
                 var isLocked = !!lockedTarget;
                 var displayName = nearest ? nearest.name.replace(/[0-9]/, '') : note.name;
-                var IN_TUNE_WINDOW = (tunerDisplayState === 'in-tune') ? 3 : 2; // +/- cents considered "in tune"
+                var IN_TUNE_WINDOW = (tunerDisplayState === 'in-tune') ? TUNER_STAY_CENTS : TUNER_ENTER_CENTS; // +/- cents considered "in tune"
                 var rawStateClass = 'in-tune';
                 if (cents > IN_TUNE_WINDOW) rawStateClass = 'sharp';
                 else if (cents < -IN_TUNE_WINDOW) rawStateClass = 'flat';
@@ -1496,7 +1529,7 @@
                 // mirroring how a physical clip-on tuner lights up/rings when locked in.
                 if (stateClass === 'in-tune') {
                     tunerInTuneStreak++;
-                    if (tunerInTuneStreak >= 7 && !tunerChimePlayed) {
+                    if (tunerInTuneStreak >= 6 && !tunerChimePlayed) {
                         tunerChimePlayed = true;
                         playInTuneChime();
                     }
@@ -1616,21 +1649,40 @@
                     var AC = window.AudioContext || window.webkitAudioContext;
                     if (!tunerAudioCtx || tunerAudioCtx.state === 'closed') tunerAudioCtx = new AC();
                     var ctx = tunerAudioCtx;
+                    if (ctx.state === 'suspended') ctx.resume();
                     var now = ctx.currentTime;
+                    // LOUDNESS (~10x the old ding): the old one peaked at 0.32 and died away in
+                    // half a second, so it carried very little energy. Digital audio can't go
+                    // past full scale, so the extra loudness comes from (a) peaks right up to full
+                    // scale, (b) a soft-saturator that turns the sines into a dense, square-ish
+                    // tone with far more energy at the same peak, and (c) holding the level before
+                    // the decay instead of fading immediately.
+                    var curve = new Float32Array(1024);
+                    for (var c = 0; c < curve.length; c++) { var x = c / (curve.length - 1) * 2 - 1; curve[c] = Math.tanh(4 * x) / Math.tanh(4); }
+                    var shaper = ctx.createWaveShaper();
+                    shaper.curve = curve;
+                    var master = ctx.createGain();
+                    master.gain.value = 0.97;
+                    shaper.connect(master);
+                    master.connect(ctx.destination);
                     [[1046.50, now], [1568.00, now + 0.09]].forEach(function (pair) {
                         var osc = ctx.createOscillator();
                         var gain = ctx.createGain();
                         osc.type = 'sine';
                         osc.frequency.value = pair[0];
-                        gain.gain.value = 0.0001;
-                        osc.connect(gain);
-                        gain.connect(ctx.destination);
                         var t = pair[1];
-                        gain.gain.exponentialRampToValueAtTime(0.32, t + 0.02);
-                        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+                        gain.gain.setValueAtTime(0.0001, t);
+                        gain.gain.linearRampToValueAtTime(0.9, t + 0.006);
+                        gain.gain.setValueAtTime(0.9, t + 0.26);
+                        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.62);
+                        osc.connect(gain);
+                        gain.connect(shaper);
                         osc.start(t);
-                        osc.stop(t + 0.51);
+                        osc.stop(t + 0.65);
                     });
+                    // The mic would hear this loud ding: ignore it (without wiping the green
+                    // display) until it has died away.
+                    tunerHoldUntil = performance.now() + 1000;
                 } catch (e) { }
             }
 
